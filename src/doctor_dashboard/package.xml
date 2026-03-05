@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>doctor_dashboard</name>
+  <version>0.1.0</version>
+  <description>Doctor dashboard backend for MediBot patient reports</description>
+  <maintainer email="dev@medibot.local">MediBot Dev</maintainer>
+  <license>MIT</license>
+  <depend>rclpy</depend>
+  <depend>std_msgs</depend>
+  <depend>robot_interfaces</depend>
+  <buildtool_depend>ament_python</buildtool_depend>
+  <export><build_type>ament_python</build_type></export>
+</package>

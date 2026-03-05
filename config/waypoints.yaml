@@ -1,0 +1,7 @@
+waypoints:
+  home:           {x: 0.0, y: 0.0, yaw: 0.0}
+  nurses_station: {x: 0.3, y: 0.3, yaw: 1.57}
+  bed_1:          {x: 1.5, y: 0.5, yaw: 0.0}
+  bed_2:          {x: 1.5, y: 2.0, yaw: 0.0}
+  bed_3:          {x: 1.5, y: 3.5, yaw: 0.0}
+  charging_dock:  {x: 0.1, y: 0.1, yaw: 3.14}

@@ -1,0 +1,36 @@
+# ROS2 build artifacts
+build/
+install/
+log/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+dist/
+
+# Database and runtime files
+database/*.db
+~/.medibot/
+
+# Environment
+.env
+*.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Large model files
+*.onnx
+*.pt
+*.pth
+assets/faces/*.pkl
+.claude/

@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>face_recognition_node</name>
+  <version>0.1.0</version>
+  <description>Face detection, recognition and tracking for MediBot</description>
+  <maintainer email="dev@medibot.local">MediBot Dev</maintainer>
+  <license>MIT</license>
+  <depend>rclpy</depend>
+  <depend>sensor_msgs</depend>
+  <depend>std_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>cv_bridge</depend>
+  <depend>robot_interfaces</depend>
+  <buildtool_depend>ament_python</buildtool_depend>
+  <export><build_type>ament_python</build_type></export>
+</package>

@@ -1,0 +1,16 @@
+ai_brain:
+  ros__parameters:
+    llm_backend: "mock"
+    whisper_model: "base.en"
+    silence_threshold: 500
+    min_phrase_s: 1.0
+    language: "en"
+    max_session_turns: 20
+    session_timeout_s: 120
+    greeting_cooldown_s: 300
+
+tts_node:
+  ros__parameters:
+    rate: 150
+    volume: 0.9
+    voice_id: ""

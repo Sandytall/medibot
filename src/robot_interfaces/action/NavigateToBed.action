@@ -1,0 +1,12 @@
+# Goal
+string bed_name
+bool wait_for_patient
+---
+# Result
+bool success
+string message
+float32 distance_traveled_m
+---
+# Feedback
+string phase   # planning, navigating, arrived
+float32 distance_remaining_m

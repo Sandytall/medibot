@@ -1,0 +1,55 @@
+settings:
+  schedule_slots:
+    morning: "09:00"
+    afternoon: "13:00"
+    evening: "18:00"
+    night: "21:00"
+  reminder_advance_minutes: 5
+  confirmation_timeout_seconds: 60
+  missed_dose_alert: true
+
+patients:
+  P001:
+    name: "Ramesh Kumar"
+    age: 65
+    bed: "bed_1"
+    schedule:
+      morning:
+        medicines:
+          - {id: metformin_500mg, dose: 1}
+          - {id: amlodipine_5mg, dose: 1}
+          - {id: atorvastatin_10mg, dose: 1}
+      night:
+        medicines:
+          - {id: metformin_500mg, dose: 1}
+
+  P002:
+    name: "Priya Sharma"
+    age: 45
+    bed: "bed_2"
+    schedule:
+      morning:
+        medicines:
+          - {id: lisinopril_5mg, dose: 1}
+          - {id: aspirin_75mg, dose: 1}
+          - {id: omeprazole_20mg, dose: 1}
+      evening:
+        medicines:
+          - {id: cetirizine_10mg, dose: 1}
+
+  P003:
+    name: "Abdul Rashid"
+    age: 72
+    bed: "bed_3"
+    schedule:
+      morning:
+        medicines:
+          - {id: metoprolol_25mg, dose: 1}
+          - {id: furosemide_40mg, dose: 1}
+          - {id: clopidogrel_75mg, dose: 1}
+      afternoon:
+        medicines:
+          - {id: pantoprazole_40mg, dose: 1}
+      night:
+        medicines:
+          - {id: metoprolol_25mg, dose: 1}

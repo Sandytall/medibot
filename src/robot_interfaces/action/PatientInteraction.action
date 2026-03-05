@@ -1,0 +1,13 @@
+# Goal
+string patient_id
+string interaction_type  # greeting, medicine_delivery, symptom_check
+string[] context_notes
+---
+# Result
+bool success
+string session_id
+robot_interfaces/PatientReport report
+---
+# Feedback
+string phase    # listening, processing, responding
+string current_transcript

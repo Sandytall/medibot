@@ -1,0 +1,13 @@
+# Goal
+string target_object
+geometry_msgs/Pose target_pose
+string arm_side   # left or right
+---
+# Result
+bool success
+string message
+float32 execution_time_s
+---
+# Feedback
+string phase   # approaching, grasping, lifting, placing
+float32 progress  # 0.0-1.0

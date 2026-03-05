@@ -1,0 +1,393 @@
+medicines:
+
+  metformin_500mg:
+    display_name: "Metformin 500mg"
+    category: "Antidiabetic / Biguanide"
+    purpose: "Management of type 2 diabetes mellitus; lowers blood glucose by decreasing hepatic glucose production and improving insulin sensitivity"
+    side_effects:
+      - "Nausea and vomiting (especially when starting therapy)"
+      - "Diarrhoea and abdominal cramping"
+      - "Metallic taste in the mouth"
+      - "Loss of appetite / anorexia"
+      - "Lactic acidosis (rare but serious)"
+      - "Vitamin B12 deficiency with long-term use"
+    instructions: "Take with or immediately after meals to reduce GI side effects. Swallow whole with water. Do not crush or chew. Morning and evening doses with breakfast and dinner."
+    image: "assets/medicines/metformin_500mg.png"
+    color: "#E87722"
+    warnings:
+      - "Contraindicated in renal impairment (eGFR < 30 mL/min)"
+      - "Withhold 48 hours before and after iodinated contrast media procedures"
+      - "Discontinue if lactic acidosis is suspected"
+      - "Monitor renal function annually"
+
+  paracetamol_500mg:
+    display_name: "Paracetamol 500mg (Acetaminophen)"
+    category: "Analgesic / Antipyretic"
+    purpose: "Relief of mild to moderate pain (headache, toothache, muscular pain) and reduction of fever"
+    side_effects:
+      - "Hepatotoxicity with overdose or chronic alcohol use"
+      - "Skin rash or allergic reaction (rare)"
+      - "Nausea (uncommon at therapeutic doses)"
+      - "Thrombocytopenia (very rare)"
+    instructions: "Take 1–2 tablets every 4–6 hours as needed. Do not exceed 4 g (8 tablets) in 24 hours. Can be taken with or without food."
+    image: "assets/medicines/paracetamol_500mg.png"
+    color: "#FFFFFF"
+    warnings:
+      - "Do not exceed the recommended dose — overdose causes severe liver damage"
+      - "Avoid in severe hepatic impairment"
+      - "Do not combine with other paracetamol-containing products"
+      - "Use with caution in chronic alcohol users"
+
+  aspirin_75mg:
+    display_name: "Aspirin 75mg"
+    category: "Antiplatelet / Analgesic / NSAID"
+    purpose: "Prophylaxis of cardiovascular events (myocardial infarction, ischaemic stroke, TIA) by inhibiting platelet aggregation"
+    side_effects:
+      - "Gastric irritation, nausea, dyspepsia"
+      - "Gastrointestinal bleeding or peptic ulceration"
+      - "Increased bruising tendency"
+      - "Bronchospasm in aspirin-sensitive individuals"
+      - "Tinnitus at higher doses"
+    instructions: "Take once daily with or after food to minimise gastric irritation. Swallow whole with a full glass of water. Usually taken in the morning."
+    image: "assets/medicines/aspirin_75mg.png"
+    color: "#F5F5F5"
+    warnings:
+      - "Contraindicated in active peptic ulcer disease"
+      - "Avoid in children under 16 (risk of Reye's syndrome)"
+      - "Stop 7–10 days before elective surgery"
+      - "Do not use with other NSAIDs simultaneously"
+
+  atorvastatin_10mg:
+    display_name: "Atorvastatin 10mg"
+    category: "Statin / HMG-CoA Reductase Inhibitor"
+    purpose: "Reduction of LDL cholesterol and triglycerides; primary and secondary prevention of cardiovascular disease"
+    side_effects:
+      - "Myalgia (muscle pain or weakness)"
+      - "Rhabdomyolysis (rare but serious)"
+      - "Elevated liver enzymes (transaminases)"
+      - "Headache and dizziness"
+      - "Gastrointestinal upset, constipation"
+      - "Increased risk of new-onset type 2 diabetes"
+    instructions: "Take once daily at any time of day, with or without food. Evening dosing may improve efficacy. Avoid grapefruit juice."
+    image: "assets/medicines/atorvastatin_10mg.png"
+    color: "#FFFFFF"
+    warnings:
+      - "Report unexplained muscle pain, tenderness, or weakness immediately"
+      - "Monitor liver function tests at baseline and if symptoms arise"
+      - "Contraindicated in active liver disease and pregnancy"
+      - "Avoid large quantities of grapefruit juice"
+
+  amlodipine_5mg:
+    display_name: "Amlodipine 5mg"
+    category: "Calcium Channel Blocker (Dihydropyridine)"
+    purpose: "Treatment of hypertension and chronic stable angina; relaxes vascular smooth muscle to lower blood pressure"
+    side_effects:
+      - "Peripheral oedema (ankle swelling)"
+      - "Flushing and warmth"
+      - "Headache"
+      - "Palpitations / reflex tachycardia"
+      - "Dizziness, especially on standing"
+      - "Gingival hyperplasia (with long-term use)"
+    instructions: "Take once daily at the same time each day, with or without food. Do not crush or chew. Takes 1–2 weeks for full antihypertensive effect."
+    image: "assets/medicines/amlodipine_5mg.png"
+    color: "#F8F8F8"
+    warnings:
+      - "Monitor blood pressure regularly"
+      - "Use with caution in severe hepatic impairment"
+      - "Do not stop abruptly without medical advice (risk of rebound angina)"
+      - "May cause severe hypotension when combined with other antihypertensives"
+
+  lisinopril_5mg:
+    display_name: "Lisinopril 5mg"
+    category: "ACE Inhibitor (Antihypertensive)"
+    purpose: "Treatment of hypertension, heart failure, and diabetic nephropathy; prevents conversion of angiotensin I to angiotensin II"
+    side_effects:
+      - "Persistent dry cough (most common reason for discontinuation)"
+      - "Hyperkalaemia (elevated potassium)"
+      - "Angioedema (rare but potentially life-threatening)"
+      - "Dizziness and first-dose hypotension"
+      - "Renal impairment, especially in bilateral renal artery stenosis"
+      - "Rash and taste disturbances"
+    instructions: "Take once daily, ideally in the morning. Can be taken with or without food. Start at low dose and titrate upward as tolerated."
+    image: "assets/medicines/lisinopril_5mg.png"
+    color: "#FFB6C1"
+    warnings:
+      - "Contraindicated in pregnancy (teratogenic — causes foetal harm)"
+      - "Contraindicated in history of ACE-inhibitor-induced angioedema"
+      - "Avoid potassium supplements and potassium-sparing diuretics without monitoring"
+      - "Monitor renal function and potassium levels regularly"
+
+  omeprazole_20mg:
+    display_name: "Omeprazole 20mg"
+    category: "Proton Pump Inhibitor (PPI)"
+    purpose: "Treatment of gastro-oesophageal reflux disease (GORD), peptic ulcers, Helicobacter pylori eradication (as part of triple therapy), and Zollinger-Ellison syndrome"
+    side_effects:
+      - "Headache"
+      - "Diarrhoea, nausea, abdominal pain"
+      - "Hypomagnesaemia with prolonged use"
+      - "Clostridium difficile-associated diarrhoea"
+      - "Increased risk of bone fractures with long-term use"
+      - "Vitamin B12 deficiency with long-term use"
+    instructions: "Take 30–60 minutes before meals (ideally before breakfast). Swallow capsule whole — do not crush or chew. Take for the prescribed duration only."
+    image: "assets/medicines/omeprazole_20mg.png"
+    color: "#6A0DAD"
+    warnings:
+      - "Long-term use should be periodically reviewed and justified"
+      - "Monitor magnesium levels in patients on long-term therapy"
+      - "May reduce absorption of drugs dependent on gastric acid (e.g., atazanavir, ketoconazole)"
+      - "Possible increased risk of Clostridium difficile with prolonged use"
+
+  amoxicillin_500mg:
+    display_name: "Amoxicillin 500mg"
+    category: "Antibiotic / Aminopenicillin"
+    purpose: "Treatment of bacterial infections including respiratory tract infections, urinary tract infections, skin infections, otitis media, and H. pylori eradication"
+    side_effects:
+      - "Diarrhoea and loose stools"
+      - "Nausea and vomiting"
+      - "Skin rash (may indicate penicillin allergy)"
+      - "Anaphylaxis (rare but serious allergic reaction)"
+      - "Candidal superinfection (thrush)"
+      - "Antibiotic-associated colitis (C. difficile)"
+    instructions: "Take every 8 hours (three times daily). Can be taken with or without food. Complete the full course even if feeling better. Do not skip doses."
+    image: "assets/medicines/amoxicillin_500mg.png"
+    color: "#FFD700"
+    warnings:
+      - "Contraindicated in documented penicillin allergy"
+      - "Cross-reactivity possible in patients allergic to cephalosporins"
+      - "May reduce efficacy of oral contraceptives (advise additional contraception)"
+      - "Always complete the full antibiotic course to prevent resistance"
+
+  cetirizine_10mg:
+    display_name: "Cetirizine 10mg"
+    category: "Antihistamine (Second Generation / H1 Antagonist)"
+    purpose: "Relief of allergic rhinitis (hay fever), urticaria (hives), and other allergic conditions including allergic conjunctivitis"
+    side_effects:
+      - "Drowsiness (less than first-generation antihistamines)"
+      - "Dry mouth"
+      - "Headache"
+      - "Dizziness"
+      - "Fatigue"
+    instructions: "Take once daily, preferably in the evening as it may cause mild drowsiness. Can be taken with or without food. Swallow whole with water."
+    image: "assets/medicines/cetirizine_10mg.png"
+    color: "#FFFFFF"
+    warnings:
+      - "Avoid driving or operating heavy machinery if drowsiness occurs"
+      - "Avoid alcohol (potentiates CNS effects)"
+      - "Use with caution in renal impairment — dose reduction may be needed"
+      - "May cause paradoxical excitation in children"
+
+  ibuprofen_400mg:
+    display_name: "Ibuprofen 400mg"
+    category: "NSAID (Non-Steroidal Anti-Inflammatory Drug)"
+    purpose: "Relief of mild to moderate pain (dental pain, headache, dysmenorrhoea, musculoskeletal pain), inflammation, and fever"
+    side_effects:
+      - "Gastrointestinal irritation, nausea, dyspepsia"
+      - "Peptic ulcer and GI bleeding"
+      - "Increased cardiovascular risk (MI, stroke) with long-term use"
+      - "Renal impairment"
+      - "Fluid retention and oedema"
+      - "Hypersensitivity reactions including bronchospasm"
+    instructions: "Take with food or milk to reduce gastric irritation. Take the lowest effective dose for the shortest duration. Maximum 1200mg per day for self-medication."
+    image: "assets/medicines/ibuprofen_400mg.png"
+    color: "#8B2500"
+    warnings:
+      - "Avoid in patients with active peptic ulcer, GI bleeding, or severe heart failure"
+      - "Use with caution in renal impairment, elderly patients, and cardiovascular disease"
+      - "Avoid during third trimester of pregnancy"
+      - "Do not combine with aspirin or other NSAIDs"
+
+  losartan_50mg:
+    display_name: "Losartan 50mg"
+    category: "Angiotensin II Receptor Blocker (ARB)"
+    purpose: "Treatment of hypertension, diabetic nephropathy in type 2 diabetes, and reduction of cardiovascular mortality in heart failure"
+    side_effects:
+      - "Dizziness and hypotension, especially on first dose"
+      - "Hyperkalaemia"
+      - "Renal impairment"
+      - "Back pain and musculoskeletal pain"
+      - "Rarely: angioedema"
+      - "Upper respiratory tract infection"
+    instructions: "Take once daily at the same time each day. Can be taken with or without food. The antihypertensive effect is usually apparent within 1 week."
+    image: "assets/medicines/losartan_50mg.png"
+    color: "#90EE90"
+    warnings:
+      - "Contraindicated in pregnancy — causes foetal harm (teratogenic)"
+      - "Avoid concurrent use with ACE inhibitors or aliskiren in diabetic patients"
+      - "Monitor renal function and potassium levels"
+      - "Do not use in bilateral renal artery stenosis"
+
+  metoprolol_25mg:
+    display_name: "Metoprolol Succinate 25mg"
+    category: "Beta-1 Selective Adrenergic Blocker"
+    purpose: "Treatment of hypertension, angina pectoris, heart failure (reduced ejection fraction), and management of tachyarrhythmias"
+    side_effects:
+      - "Bradycardia (slow heart rate)"
+      - "Fatigue and lethargy"
+      - "Cold extremities"
+      - "Dizziness and hypotension"
+      - "Bronchospasm (at higher doses or in susceptible individuals)"
+      - "Depression and sleep disturbances"
+    instructions: "Take once daily (extended-release) with or without food. Swallow whole — do not crush or chew extended-release tablets. Take at the same time each day."
+    image: "assets/medicines/metoprolol_25mg.png"
+    color: "#FFB6CB"
+    warnings:
+      - "Do not stop abruptly — taper gradually to avoid rebound hypertension or angina"
+      - "Use with extreme caution in asthma or COPD"
+      - "Contraindicated in cardiogenic shock and severe bradycardia"
+      - "Masks symptoms of hypoglycaemia in diabetic patients"
+
+  pantoprazole_40mg:
+    display_name: "Pantoprazole 40mg"
+    category: "Proton Pump Inhibitor (PPI)"
+    purpose: "Treatment of erosive oesophagitis, GORD, peptic ulcers, and conditions associated with pathological hypersecretion of gastric acid"
+    side_effects:
+      - "Headache"
+      - "Diarrhoea and abdominal pain"
+      - "Nausea and flatulence"
+      - "Hypomagnesaemia with prolonged use"
+      - "Increased risk of Clostridium difficile infection"
+      - "Bone fracture risk with long-term use"
+    instructions: "Take once daily, 30–60 minutes before the first meal of the day. Swallow tablet whole with water — do not crush or chew. Take for the prescribed duration."
+    image: "assets/medicines/pantoprazole_40mg.png"
+    color: "#FFD700"
+    warnings:
+      - "Long-term use should be reviewed periodically"
+      - "Monitor serum magnesium in patients on prolonged therapy"
+      - "May interfere with absorption of certain medications (e.g., ketoconazole, atazanavir)"
+      - "False-positive urine cannabinoid tests reported"
+
+  clopidogrel_75mg:
+    display_name: "Clopidogrel 75mg"
+    category: "Antiplatelet Agent (P2Y12 ADP Receptor Inhibitor)"
+    purpose: "Prevention of atherothrombotic events in patients with acute coronary syndrome, recent MI or stroke, or established peripheral arterial disease"
+    side_effects:
+      - "Bleeding (GI bleeding, purpura, bruising)"
+      - "Dyspepsia, abdominal pain, diarrhoea"
+      - "Rash and pruritus"
+      - "Thrombotic thrombocytopenic purpura (TTP) — rare"
+      - "Headache"
+    instructions: "Take once daily, with or without food. Consistency in timing is important. Often taken alongside aspirin (dual antiplatelet therapy)."
+    image: "assets/medicines/clopidogrel_75mg.png"
+    color: "#FF69B4"
+    warnings:
+      - "Increased risk of bleeding — avoid activities that increase trauma risk"
+      - "Discontinue 5–7 days before elective surgery"
+      - "Avoid omeprazole/esomeprazole (reduces efficacy via CYP2C19 inhibition)"
+      - "CYP2C19 poor metabolisers may have reduced antiplatelet response"
+
+  furosemide_40mg:
+    display_name: "Furosemide 40mg"
+    category: "Loop Diuretic"
+    purpose: "Treatment of oedema associated with heart failure, hepatic cirrhosis, and renal disease; management of hypertension"
+    side_effects:
+      - "Hypokalaemia (low potassium — muscle cramps, weakness)"
+      - "Hyponatraemia (low sodium)"
+      - "Dehydration and electrolyte imbalances"
+      - "Ototoxicity (hearing loss) — especially with IV high doses"
+      - "Hyperuricaemia (raised uric acid — may precipitate gout)"
+      - "Postural hypotension (dizziness on standing)"
+    instructions: "Take in the morning to avoid nocturnal diuresis (frequent urination at night). Can be taken with or without food. Monitor urine output and weight."
+    image: "assets/medicines/furosemide_40mg.png"
+    color: "#FFFFFF"
+    warnings:
+      - "Monitor electrolytes regularly (especially potassium, sodium, creatinine)"
+      - "Potassium supplementation may be required"
+      - "Use with caution in gout, diabetes, and prostatic hypertrophy"
+      - "Avoid in severe hypokalaemia and hyponatraemia until corrected"
+
+  prednisolone_5mg:
+    display_name: "Prednisolone 5mg"
+    category: "Corticosteroid (Glucocorticoid)"
+    purpose: "Management of inflammatory and autoimmune conditions including asthma, COPD exacerbations, rheumatoid arthritis, allergic reactions, and adrenal insufficiency"
+    side_effects:
+      - "Increased appetite and weight gain"
+      - "Fluid retention and hypertension"
+      - "Hyperglycaemia / steroid-induced diabetes"
+      - "Osteoporosis with long-term use"
+      - "Adrenal suppression and Cushingoid features"
+      - "Increased susceptibility to infections"
+    instructions: "Take once daily in the morning with food to mimic natural cortisol rhythm and reduce gastric irritation. Do not stop abruptly — taper dose under medical supervision."
+    image: "assets/medicines/prednisolone_5mg.png"
+    color: "#CC0000"
+    warnings:
+      - "Never stop abruptly after prolonged use — risk of adrenal crisis"
+      - "Monitor blood glucose in diabetic patients (steroid-induced hyperglycaemia)"
+      - "Consider bone protection (calcium, vitamin D) for courses > 3 months"
+      - "Carry a steroid treatment card; inform all healthcare providers"
+
+  vitamin_d3_1000iu:
+    display_name: "Vitamin D3 1000 IU (Cholecalciferol)"
+    category: "Vitamin / Nutritional Supplement"
+    purpose: "Prevention and treatment of vitamin D deficiency; supports calcium absorption, bone health, immune function, and muscle strength"
+    side_effects:
+      - "Hypercalcaemia with excessive doses (fatigue, nausea, confusion)"
+      - "Hypercalciuria (increased calcium in urine)"
+      - "Nausea and constipation at high doses"
+      - "Weakness and headache at toxic doses"
+    instructions: "Take once daily with food for better absorption (fat-soluble vitamin). Soft-gel capsule — swallow whole. Can be taken at any time of day."
+    image: "assets/medicines/vitamin_d3_1000iu.png"
+    color: "#FFEC00"
+    warnings:
+      - "Do not exceed recommended dose without medical advice"
+      - "Toxicity is possible with excessive supplementation (hypervitaminosis D)"
+      - "Monitor serum 25-OH vitamin D and calcium levels in high-risk patients"
+      - "Patients with sarcoidosis or hyperparathyroidism require medical supervision"
+
+  calcium_500mg:
+    display_name: "Calcium Carbonate 500mg"
+    category: "Mineral Supplement / Antacid"
+    purpose: "Prevention and treatment of calcium deficiency, osteoporosis prophylaxis (often combined with vitamin D), and as an antacid for heartburn relief"
+    side_effects:
+      - "Constipation"
+      - "Flatulence and bloating"
+      - "Nausea"
+      - "Hypercalcaemia with excessive intake"
+      - "Kidney stones with high doses and inadequate fluid intake"
+    instructions: "Take with meals (requires gastric acid for absorption). Divide doses (500mg per dose) for better absorption. Chew tablets thoroughly or swallow with adequate water."
+    image: "assets/medicines/calcium_500mg.png"
+    color: "#F0F0F0"
+    warnings:
+      - "Avoid exceeding 1500mg elemental calcium per day from supplements"
+      - "Increase fluid intake to reduce risk of kidney stones"
+      - "Separate from iron, zinc, and fluoride supplements by 2 hours (reduces absorption)"
+      - "Monitor serum calcium in patients with renal impairment"
+
+  insulin_glargine:
+    display_name: "Insulin Glargine 100 IU/mL (Lantus / Basaglar)"
+    category: "Long-Acting Insulin Analogue"
+    purpose: "Basal glycaemic control in adults and children with type 1 diabetes mellitus, and adults with type 2 diabetes who require insulin therapy"
+    side_effects:
+      - "Hypoglycaemia (low blood sugar — dizziness, sweating, confusion)"
+      - "Injection site reactions (lipohypertrophy, lipoatrophy, pain)"
+      - "Weight gain"
+      - "Oedema (fluid retention when starting insulin)"
+      - "Allergic reactions (rare)"
+      - "Visual disturbances at initiation (due to rapid glucose changes)"
+    instructions: "Administer subcutaneously once daily at the same time each day (often bedtime). Rotate injection sites (abdomen, thigh, upper arm). Do not mix with other insulins. Use only clear, colourless solution."
+    image: "assets/medicines/insulin_glargine.png"
+    color: "#E8F4FD"
+    warnings:
+      - "Monitor blood glucose regularly — dose adjustment may be needed"
+      - "Educate patient on hypoglycaemia recognition and management"
+      - "Do not inject into a vein or muscle (subcutaneous only)"
+      - "Store unopened vials in refrigerator (2–8°C); discard opened vials after 28 days at room temperature"
+
+  salbutamol_inhaler:
+    display_name: "Salbutamol Inhaler 100mcg/actuation (Ventolin)"
+    category: "Short-Acting Beta-2 Agonist (SABA) Bronchodilator"
+    purpose: "Relief of bronchospasm in asthma and COPD; prevention of exercise-induced bronchospasm. Acts as a rescue inhaler for acute symptoms"
+    side_effects:
+      - "Tremor (fine muscle tremor, especially hands)"
+      - "Palpitations and tachycardia"
+      - "Headache"
+      - "Hypokalaemia with high doses"
+      - "Nervousness and anxiety"
+      - "Paradoxical bronchospasm (rare)"
+    instructions: "Shake well before use. Exhale fully, place mouthpiece in mouth, inhale slowly and deeply while pressing the canister, hold breath for 10 seconds. Wait 30–60 seconds between puffs. Use spacer device if available."
+    image: "assets/medicines/salbutamol_inhaler.png"
+    color: "#1E90FF"
+    warnings:
+      - "For reliever use only — if needing more than 3 times/week, review asthma control"
+      - "Do not use as sole long-term controller — add preventer inhaler if frequent use"
+      - "Paradoxical bronchospasm can occur — discontinue and seek alternative"
+      - "Use with caution in thyrotoxicosis, hypertension, and arrhythmias"

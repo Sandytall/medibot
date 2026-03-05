@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>robot_bringup</name>
+  <version>0.1.0</version>
+  <description>Launch files for MediBot medical robot</description>
+  <maintainer email="dev@medibot.local">MediBot Dev</maintainer>
+  <license>MIT</license>
+  <depend>rclpy</depend>
+  <depend>motor_driver_node</depend>
+  <depend>imu_mpu6050</depend>
+  <depend>camera_node</depend>
+  <depend>face_recognition_node</depend>
+  <depend>arm_controller</depend>
+  <depend>ai_brain</depend>
+  <depend>medicine_scheduler</depend>
+  <depend>doctor_dashboard</depend>
+  <depend>compute_manager</depend>
+  <depend>teleop_gamepad</depend>
+  <buildtool_depend>ament_python</buildtool_depend>
+  <export><build_type>ament_python</build_type></export>
+</package>

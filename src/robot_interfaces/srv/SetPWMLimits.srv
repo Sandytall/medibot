@@ -1,0 +1,6 @@
+float32 max_forward_pwm
+float32 max_reverse_pwm
+float32 max_turn_pwm
+---
+bool success
+string message

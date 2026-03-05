@@ -1,0 +1,8 @@
+string medicine_id
+---
+bool found
+string display_name
+string category
+string purpose
+string[] side_effects
+string instructions

@@ -1,0 +1,12 @@
+arm_controller:
+  ros__parameters:
+    i2c_bus: 1
+    pca_address_left: 0x40
+    pca_address_right: 0x41
+    link1_m: 0.15
+    link2_m: 0.12
+    link3_m: 0.08
+    servo_freq_hz: 50
+    servo_min_pulse: 150
+    servo_max_pulse: 600
+    move_delay_ms: 20

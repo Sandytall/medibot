@@ -1,0 +1,33 @@
+motor_driver:
+  ros__parameters:
+    # Wheel geometry
+    wheel_radius: 0.05          # metres
+    track_width: 0.30           # metres (centre to centre)
+    max_speed: 0.5              # m/s
+    cmd_timeout: 0.5            # seconds — stop if no /cmd_vel
+    ticks_per_rev: 1440         # encoder ticks per full wheel revolution
+
+    # Motor direction inversion
+    left_motor_inverted: false
+    right_motor_inverted: true
+
+    # TF / odometry frames
+    odom_frame: "odom"
+    base_frame: "base_link"
+
+    # --- Pi4 GPIO pin assignments (BCM numbering) ---
+    # L298N direction control
+    pin_left_in1: 17            # L298N IN1
+    pin_left_in2: 18            # L298N IN2
+    pin_right_in3: 27           # L298N IN3
+    pin_right_in4: 22           # L298N IN4
+
+    # Hardware PWM speed control
+    pin_left_pwm: 12            # L298N ENA  (hardware PWM0)
+    pin_right_pwm: 13           # L298N ENB  (hardware PWM1)
+
+    # Wheel encoders (quadrature)
+    pin_left_enc_a: 23
+    pin_left_enc_b: 24
+    pin_right_enc_a: 25
+    pin_right_enc_b: 26
