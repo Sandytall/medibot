@@ -78,7 +78,7 @@ def generate_launch_description():
         ),
         Node(
             package='camera_node',
-            executable='camera_node',
+            executable='main_camera',
             name='main_camera',
             output='screen',
             parameters=[{'camera_id': 0}],
@@ -86,7 +86,7 @@ def generate_launch_description():
         ),
         Node(
             package='camera_node',
-            executable='camera_node',
+            executable='face_camera',
             name='face_camera',
             output='screen',
             parameters=[{'camera_id': 1}],
