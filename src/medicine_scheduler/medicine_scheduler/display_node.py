@@ -1,22 +1,24 @@
 #!/usr/bin/env python3
 """
-display_node.py - Medicine Display Node for MediBot
+display_node.py - Patient-facing medicine display for MediBot
 
-Subscribes to /medicine_scheduler/dispatch (std_msgs/String JSON) and displays
-a fullscreen patient-facing tkinter window with medicine details.
+Shows a fullscreen window on the robot's touchscreen when medicine is due.
+Each medicine card shows: name, dose, purpose, side effects, instructions,
+and the pill image (from assets/medicines/<id>.png).
 
-When the patient taps "I Have Taken My Medicine", a MedicineEvent with
-confirmed_by_patient=True is published to /medicine_event.
+Buttons:
+  "I Have Taken My Medicine"  -> publish confirmed MedicineEvent
+  "Remind me in 5 minutes"    -> re-queue after 300s
+  Auto-close after 60s if no response.
 
-A "Remind me in 5 minutes" button hides the window and reschedules a reminder.
-
-The window auto-closes after 60 seconds if no response.
+Topics:
+  Sub: /medicine_scheduler/dispatch  (std_msgs/String JSON)
+  Sub: /face_detections              (FaceDetection)
+  Pub: /medicine_event               (MedicineEvent)
+  Pub: /display/status               (std_msgs/String)
 
 Environment:
-  USE_MOCK_HW=true  ->  headless mode; GUI is suppressed, events are logged only.
-
-Also subscribes to /face_detections to display a personalised greeting.
-Publishes /display/status (std_msgs/String) with current display state.
+  USE_MOCK_HW=true  -> headless, auto-confirm after 2s.
 """
 
 import json
@@ -34,245 +36,220 @@ from std_msgs.msg import String
 from robot_interfaces.msg import MedicineEvent, FaceDetection
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-def _expand(path: str) -> Path:
-    return Path(path).expanduser().resolve()
+AUTO_CLOSE_S   = 60
+REMIND_DELAY_S = 300
+ASSETS_DIR     = Path("~/medical/assets/medicines").expanduser()
 
 
 def _load_yaml(path: Path) -> dict:
     if not path.exists():
         return {}
-    with open(path, "r") as fh:
-        return yaml.safe_load(fh) or {}
-
-
-AUTO_CLOSE_SECONDS = 60
-REMIND_DELAY_SECONDS = 300   # 5 minutes
+    with open(path) as f:
+        return yaml.safe_load(f) or {}
 
 
 # ---------------------------------------------------------------------------
-# Tkinter UI
+# Tkinter window
 # ---------------------------------------------------------------------------
 
 class MedicineWindow:
-    """
-    Fullscreen tkinter window shown to the patient.
+    """Fullscreen medicine display — must be created on the main thread."""
 
-    Must be created and operated on the main thread.
-    """
+    BG          = "#0d1117"
+    CARD_BG     = "#161b22"
+    ACCENT      = "#21d4fd"
+    TEXT_MAIN   = "#e0e0ff"
+    TEXT_SUB    = "#c9d1d9"
+    TEXT_DIM    = "#8b949e"
+    BTN_GREEN   = "#27ae60"
+    BTN_BLUE    = "#2980b9"
+    BTN_TEXT    = "#ffffff"
 
-    FONT_HEADING   = ("Helvetica", 28, "bold")
-    FONT_SUBHEADING= ("Helvetica", 20, "bold")
-    FONT_BODY      = ("Helvetica", 16)
-    FONT_SMALL     = ("Helvetica", 13)
-    FONT_BTN_MAIN  = ("Helvetica", 22, "bold")
-    FONT_BTN_MINOR = ("Helvetica", 16)
-
-    COLOR_BG       = "#1a1a2e"
-    COLOR_HEADING  = "#e0e0ff"
-    COLOR_BODY     = "#c8c8e8"
-    COLOR_BTN_MAIN = "#27ae60"
-    COLOR_BTN_REMI = "#2980b9"
-    COLOR_BTN_TEXT = "#ffffff"
-
-    def __init__(self, dispatch_payload: dict, medicine_details: dict,
+    def __init__(self, payload: dict, medicines_db: dict,
                  on_confirm, on_remind, on_timeout):
-        """
-        Parameters
-        ----------
-        dispatch_payload : dict   parsed /medicine_scheduler/dispatch JSON
-        medicine_details : dict   mapping med_id -> full info from medicines.yaml
-        on_confirm       : callable()  called when patient confirms
-        on_remind        : callable()  called when patient requests reminder
-        on_timeout       : callable()  called when window auto-closes
-        """
         import tkinter as tk
+        from tkinter import font as tkfont
 
-        self._tk  = tk
+        self._tk         = tk
+        self._payload    = payload
+        self._med_db     = medicines_db
         self._on_confirm = on_confirm
         self._on_remind  = on_remind
         self._on_timeout = on_timeout
-        self._payload    = dispatch_payload
-        self._med_details= medicine_details
         self._closed     = False
+        self._remaining  = AUTO_CLOSE_S
 
         self._root = tk.Tk()
-        self._root.title("MediBot - Medicine Time")
-        self._root.configure(bg=self.COLOR_BG)
+        self._root.title("MediBot")
+        self._root.configure(bg=self.BG)
         self._root.attributes("-fullscreen", True)
+        self._root.bind("<Escape>", lambda e: None)  # disable accidental exit
 
-        self._build_ui()
-
-        # Auto-close countdown
-        self._remaining = AUTO_CLOSE_SECONDS
-        self._countdown_label: "tk.Label | None" = None
-        self._schedule_countdown()
+        self._photo_refs = []  # keep tkinter image refs alive
+        self._build(tk)
+        self._tick_countdown()
 
     # ------------------------------------------------------------------
-    # UI construction
-    # ------------------------------------------------------------------
+    def _build(self, tk):
+        root     = self._root
+        payload  = self._payload
+        name     = payload.get("patient_name", payload.get("patient_id", "Patient"))
+        slot     = payload.get("slot", "").capitalize()
+        meds     = payload.get("medicines", [])
+        hour     = __import__("datetime").datetime.now().hour
+        greeting = "Good morning" if hour < 12 else ("Good afternoon" if hour < 18 else "Good evening")
 
-    def _build_ui(self):
-        tk = self._tk
-        root = self._root
-        payload = self._payload
+        # ---- Outer scroll canvas (for many medicines) ----
+        canvas = tk.Canvas(root, bg=self.BG, highlightthickness=0)
+        scrollbar = tk.Scrollbar(root, orient="vertical", command=canvas.yview,
+                                 bg=self.BG, troughcolor=self.BG)
+        canvas.configure(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side="right", fill="y")
+        canvas.pack(side="left", fill="both", expand=True)
 
-        patient_name = payload.get("patient_name", payload.get("patient_id", "Patient"))
-        slot         = payload.get("slot", "").capitalize()
-        medicines    = payload.get("medicines", [])
+        frame = tk.Frame(canvas, bg=self.BG)
+        window_id = canvas.create_window((0, 0), window=frame, anchor="nw")
 
-        outer = tk.Frame(root, bg=self.COLOR_BG)
-        outer.pack(expand=True, fill="both", padx=40, pady=30)
+        def _on_configure(event):
+            canvas.configure(scrollregion=canvas.bbox("all"))
+            canvas.itemconfig(window_id, width=event.width)
+        frame.bind("<Configure>", _on_configure)
+        canvas.bind("<Configure>", lambda e: canvas.itemconfig(window_id, width=e.width))
 
-        # Patient greeting
-        tk.Label(
-            outer,
-            text=f"Hello, {patient_name}",
-            font=("Helvetica", 22),
-            bg=self.COLOR_BG, fg="#a0d8ef",
-        ).pack(pady=(0, 4))
+        # ---- Header ----
+        hdr = tk.Frame(frame, bg="#1a2533", pady=12)
+        hdr.pack(fill="x", padx=0)
+        tk.Label(hdr, text=f"{greeting}, {name}!",
+                 font=("Helvetica", 18), bg="#1a2533", fg="#a0d8ef").pack()
+        tk.Label(hdr, text=f"Your {slot} Medication",
+                 font=("Helvetica", 30, "bold"), bg="#1a2533", fg=self.TEXT_MAIN).pack()
+        tk.Frame(hdr, bg=self.ACCENT, height=2).pack(fill="x", pady=(10, 0))
 
-        # Main heading
-        tk.Label(
-            outer,
-            text=f"Your {slot} Medication",
-            font=self.FONT_HEADING,
-            bg=self.COLOR_BG, fg=self.COLOR_HEADING,
-        ).pack(pady=(0, 20))
+        # ---- Medicine cards ----
+        for med in meds:
+            self._build_card(frame, tk, med)
 
-        # --- Medicine cards ---
-        for med in medicines:
-            med_id   = med.get("id", "")
-            dose     = med.get("dose", 1)
-            details  = self._med_details.get(med_id, {})
-            name     = details.get("name", med_id)
-            purpose  = details.get("purpose", "As prescribed by your doctor.")
-            side_eff = details.get("side_effects", [])
-            instrct  = details.get("instructions", "Take with water.")
+        # ---- Buttons ----
+        btn_frame = tk.Frame(frame, bg=self.BG)
+        btn_frame.pack(pady=20)
 
-            card = tk.Frame(outer, bg="#16213e", relief="flat", bd=0)
-            card.pack(fill="x", pady=10, ipady=12, ipadx=16)
-
-            tk.Label(
-                card, text=name,
-                font=self.FONT_SUBHEADING,
-                bg="#16213e", fg="#f0e68c",
-            ).pack(anchor="w", padx=20, pady=(10, 2))
-
-            tk.Label(
-                card, text=f"Dose: {dose} tablet(s)",
-                font=self.FONT_SMALL,
-                bg="#16213e", fg="#a0c4ff",
-            ).pack(anchor="w", padx=20, pady=(0, 8))
-
-            # What it's for
-            tk.Label(
-                card, text="What it's for:",
-                font=("Helvetica", 14, "bold"),
-                bg="#16213e", fg=self.COLOR_BODY,
-            ).pack(anchor="w", padx=20)
-            tk.Label(
-                card, text=purpose,
-                font=self.FONT_SMALL,
-                bg="#16213e", fg="#d0d0e8",
-                wraplength=900, justify="left",
-            ).pack(anchor="w", padx=36, pady=(0, 6))
-
-            # Side effects
-            if side_eff:
-                tk.Label(
-                    card, text="Side Effects:",
-                    font=("Helvetica", 14, "bold"),
-                    bg="#16213e", fg=self.COLOR_BODY,
-                ).pack(anchor="w", padx=20)
-                se_text = "  •  " + "\n  •  ".join(side_eff)
-                tk.Label(
-                    card, text=se_text,
-                    font=self.FONT_SMALL,
-                    bg="#16213e", fg="#d0d0e8",
-                    justify="left",
-                ).pack(anchor="w", padx=36, pady=(0, 6))
-
-            # Instructions
-            tk.Label(
-                card, text="Instructions:",
-                font=("Helvetica", 14, "bold"),
-                bg="#16213e", fg=self.COLOR_BODY,
-            ).pack(anchor="w", padx=20)
-            tk.Label(
-                card, text=instrct,
-                font=self.FONT_SMALL,
-                bg="#16213e", fg="#d0d0e8",
-                wraplength=900, justify="left",
-            ).pack(anchor="w", padx=36, pady=(0, 10))
-
-        # --- Buttons ---
-        btn_frame = tk.Frame(outer, bg=self.COLOR_BG)
-        btn_frame.pack(pady=24)
-
-        confirm_btn = tk.Button(
+        tk.Button(
             btn_frame,
-            text="I Have Taken My Medicine",
-            font=self.FONT_BTN_MAIN,
-            bg=self.COLOR_BTN_MAIN,
-            fg=self.COLOR_BTN_TEXT,
-            relief="flat",
-            padx=32, pady=18,
-            command=self._handle_confirm,
+            text="✔  I Have Taken My Medicine",
+            font=("Helvetica", 22, "bold"),
+            bg=self.BTN_GREEN, fg=self.BTN_TEXT,
+            relief="flat", padx=32, pady=18,
             cursor="hand2",
-        )
-        confirm_btn.grid(row=0, column=0, padx=16)
+            command=self._confirm,
+        ).grid(row=0, column=0, padx=16)
 
-        remind_btn = tk.Button(
+        tk.Button(
             btn_frame,
-            text="Remind me in 5 minutes",
-            font=self.FONT_BTN_MINOR,
-            bg=self.COLOR_BTN_REMI,
-            fg=self.COLOR_BTN_TEXT,
-            relief="flat",
-            padx=20, pady=14,
-            command=self._handle_remind,
+            text="⏰  Remind me in 5 minutes",
+            font=("Helvetica", 16),
+            bg=self.BTN_BLUE, fg=self.BTN_TEXT,
+            relief="flat", padx=20, pady=14,
             cursor="hand2",
-        )
-        remind_btn.grid(row=0, column=1, padx=16)
+            command=self._remind,
+        ).grid(row=0, column=1, padx=16)
 
-        # Countdown label
-        self._countdown_label = tk.Label(
-            outer,
-            text=f"Auto-closing in {AUTO_CLOSE_SECONDS}s...",
-            font=("Helvetica", 12),
-            bg=self.COLOR_BG, fg="#606080",
-        )
-        self._countdown_label.pack(pady=(4, 0))
+        self._cd_label = tk.Label(
+            frame,
+            text=f"Auto-closing in {AUTO_CLOSE_S}s...",
+            font=("Helvetica", 12), bg=self.BG, fg=self.TEXT_DIM)
+        self._cd_label.pack(pady=(0, 16))
 
     # ------------------------------------------------------------------
-    # Callbacks
+    def _build_card(self, parent, tk, med: dict):
+        med_id    = med.get("id", "")
+        dose      = med.get("dose", 1)
+        disp_name = med.get("display_name", "")
+        detail    = self._med_db.get(med_id, {})
+        name      = detail.get("display_name") or disp_name or med_id.replace("_", " ").title()
+        purpose   = detail.get("purpose",      "As prescribed by your doctor.")
+        side_eff  = detail.get("side_effects", [])
+        instrct   = detail.get("instructions", "Take with water.")
+        warnings  = detail.get("warnings",     [])
+        category  = detail.get("category",     "")
+
+        card = tk.Frame(parent, bg=self.CARD_BG, pady=2)
+        card.pack(fill="x", padx=32, pady=10, ipadx=16, ipady=10)
+
+        # Top row: image + name
+        top = tk.Frame(card, bg=self.CARD_BG)
+        top.pack(fill="x", padx=16, pady=(12, 6))
+
+        # Medicine image
+        img_path = ASSETS_DIR / f"{med_id}.png"
+        if img_path.exists():
+            try:
+                from PIL import Image, ImageTk
+                img = Image.open(img_path).resize((80, 80))
+                photo = ImageTk.PhotoImage(img)
+                self._photo_refs.append(photo)
+                tk.Label(top, image=photo, bg=self.CARD_BG).pack(side="left", padx=(0, 16))
+            except Exception:
+                pass
+
+        info = tk.Frame(top, bg=self.CARD_BG)
+        info.pack(side="left", fill="x", expand=True)
+
+        tk.Label(info, text=name,
+                 font=("Helvetica", 20, "bold"),
+                 bg=self.CARD_BG, fg="#f0e68c").pack(anchor="w")
+        tk.Label(info, text=f"{category}  •  Dose: {dose} tablet(s)",
+                 font=("Helvetica", 13),
+                 bg=self.CARD_BG, fg=self.ACCENT).pack(anchor="w", pady=(2, 0))
+
+        tk.Frame(card, bg="#21364a", height=1).pack(fill="x", padx=16, pady=6)
+
+        # Details
+        body = tk.Frame(card, bg=self.CARD_BG)
+        body.pack(fill="x", padx=16, pady=(0, 10))
+
+        self._section(body, tk, "What it's for:", purpose)
+
+        if side_eff:
+            se_text = "\n".join(f"  •  {s}" for s in side_eff)
+            self._section(body, tk, "Side Effects:", se_text)
+
+        self._section(body, tk, "Instructions:", instrct)
+
+        if warnings:
+            warn_text = "\n".join(f"  ⚠  {w}" for w in warnings)
+            tk.Label(body, text=warn_text,
+                     font=("Helvetica", 12, "italic"),
+                     bg=self.CARD_BG, fg="#e74c3c",
+                     justify="left", wraplength=800).pack(anchor="w", pady=(4, 0))
+
+    def _section(self, parent, tk, label: str, text: str):
+        tk.Label(parent, text=label,
+                 font=("Helvetica", 14, "bold"),
+                 bg=self.CARD_BG, fg=self.TEXT_SUB).pack(anchor="w", pady=(8, 0))
+        tk.Label(parent, text=text,
+                 font=("Helvetica", 13),
+                 bg=self.CARD_BG, fg="#d0d0e8",
+                 justify="left", wraplength=820).pack(anchor="w", padx=12)
+
     # ------------------------------------------------------------------
-
-    def _handle_confirm(self):
-        self._close()
-        self._on_confirm()
-
-    def _handle_remind(self):
-        self._close()
-        self._on_remind()
-
-    def _schedule_countdown(self):
+    def _tick_countdown(self):
         if self._closed:
             return
         if self._remaining <= 0:
             self._close()
             self._on_timeout()
             return
-        if self._countdown_label:
-            self._countdown_label.config(
-                text=f"Auto-closing in {self._remaining}s..."
-            )
+        self._cd_label.config(text=f"Auto-closing in {self._remaining}s...")
         self._remaining -= 1
-        self._root.after(1000, self._schedule_countdown)
+        self._root.after(1000, self._tick_countdown)
+
+    def _confirm(self):
+        self._close()
+        self._on_confirm()
+
+    def _remind(self):
+        self._close()
+        self._on_remind()
 
     def _close(self):
         if not self._closed:
@@ -283,7 +260,6 @@ class MedicineWindow:
                 pass
 
     def run(self):
-        """Block until the window is closed."""
         self._root.mainloop()
 
 
@@ -295,218 +271,143 @@ class DisplayNode(Node):
     def __init__(self):
         super().__init__("display_node")
 
-        self._use_mock_hw = os.environ.get("USE_MOCK_HW", "false").lower() == "true"
+        self._use_mock = os.environ.get("USE_MOCK_HW", "").lower() in ("1","true","yes")
 
-        # Queue for pending dispatch messages (processed on main thread)
-        self._pending_dispatches: list = []
-        self._pending_lock = threading.Lock()
-        self._reminder_timer: threading.Timer | None = None
+        self._pending:   list            = []
+        self._lock                       = threading.Lock()
+        self._reminder_timer             = None
+        self._current_payload: dict|None = None
 
-        # Currently displayed payload (used for publishing confirmation events)
-        self._current_payload: dict | None = None
+        self._med_db = _load_yaml(
+            Path("~/medical/config/medicines.yaml").expanduser()
+        ).get("medicines", {})
 
-        # Last seen face (from /face_detections)
-        self._last_face: dict | None = None
+        latch = QoSProfile(depth=5, reliability=ReliabilityPolicy.RELIABLE,
+                           durability=DurabilityPolicy.TRANSIENT_LOCAL)
 
-        # --- Load medicines DB ---
-        medicines_path = _expand("~/medical/config/medicines.yaml")
-        self._medicines_db: dict = _load_yaml(medicines_path)
+        self._event_pub  = self.create_publisher(MedicineEvent, "/medicine_event",   10)
+        self._status_pub = self.create_publisher(String,        "/display/status",   latch)
 
-        # --- Publishers ---
-        latch_qos = QoSProfile(
-            depth=5,
-            reliability=ReliabilityPolicy.RELIABLE,
-            durability=DurabilityPolicy.TRANSIENT_LOCAL,
-        )
-        self._event_pub  = self.create_publisher(MedicineEvent, "/medicine_event", 10)
-        self._status_pub = self.create_publisher(String, "/display/status", latch_qos)
-
-        # --- Subscribers ---
-        self._dispatch_sub = self.create_subscription(
-            String,
-            "/medicine_scheduler/dispatch",
-            self._on_dispatch,
-            10,
-        )
-        self._face_sub = self.create_subscription(
-            FaceDetection,
-            "/face_detections",
-            self._on_face_detection,
-            10,
-        )
+        self.create_subscription(String,        "/medicine_scheduler/dispatch",
+                                 self._on_dispatch, 10)
+        self.create_subscription(FaceDetection, "/face_detections",
+                                 self._on_face,     10)
 
         self._publish_status("idle", None)
         self.get_logger().info(
-            f"DisplayNode started. mock_hw={self._use_mock_hw}"
-        )
+            f"DisplayNode started  mock={self._use_mock}")
 
     # ------------------------------------------------------------------
-    # Subscriber callbacks
-    # ------------------------------------------------------------------
-
     def _on_dispatch(self, msg: String):
         try:
             payload = json.loads(msg.data)
-        except json.JSONDecodeError as exc:
-            self.get_logger().error(f"Bad JSON on /medicine_scheduler/dispatch: {exc}")
+        except json.JSONDecodeError as e:
+            self.get_logger().error(f"Bad JSON: {e}")
             return
 
         self.get_logger().info(
-            f"Dispatch received: patient={payload.get('patient_id')}, "
-            f"slot={payload.get('slot')}"
-        )
+            f"Dispatch received  patient={payload.get('patient_id')}  "
+            f"slot={payload.get('slot')}")
 
-        if self._use_mock_hw:
-            self._mock_display(payload)
+        if self._use_mock:
+            self._mock_show(payload)
             return
 
-        with self._pending_lock:
-            self._pending_dispatches.append(payload)
+        with self._lock:
+            self._pending.append(payload)
 
-    def _on_face_detection(self, msg: FaceDetection):
-        self._last_face = {
-            "patient_id":   msg.patient_id,
-            "patient_name": msg.patient_name,
-            "confidence":   msg.confidence,
-        }
+    def _on_face(self, msg: FaceDetection):
+        pass  # reserved for future greeting update
 
     # ------------------------------------------------------------------
-    # Mock HW (headless)
-    # ------------------------------------------------------------------
-
-    def _mock_display(self, payload: dict):
-        patient_name = payload.get("patient_name", payload.get("patient_id", "Patient"))
-        slot         = payload.get("slot", "").capitalize()
-        medicines    = payload.get("medicines", [])
-        med_db       = self._medicines_db.get("medicines", {})
-
-        self.get_logger().info("=== [MOCK DISPLAY] ===")
-        self.get_logger().info(f"Patient: {patient_name}")
-        self.get_logger().info(f"Slot: {slot} Medication")
-        for med in medicines:
-            med_id  = med.get("id", "")
-            dose    = med.get("dose", 1)
-            details = med_db.get(med_id, {})
+    def _mock_show(self, payload: dict):
+        name = payload.get("patient_name", "Patient")
+        slot = payload.get("slot", "").capitalize()
+        self.get_logger().info(f"[DISPLAY MOCK]  {name} — {slot} medicines:")
+        for m in payload.get("medicines", []):
+            d = self._med_db.get(m.get("id",""), {})
             self.get_logger().info(
-                f"  Medicine: {details.get('name', med_id)} x{dose}"
-            )
+                f"  • {d.get('display_name', m.get('id'))}  x{m.get('dose',1)}")
             self.get_logger().info(
-                f"    Purpose: {details.get('purpose', 'N/A')}"
-            )
-            self.get_logger().info(
-                f"    Instructions: {details.get('instructions', 'N/A')}"
-            )
-        self.get_logger().info("[MOCK] Auto-confirming after 2s (test mode)")
+                f"    For: {d.get('purpose','')}")
+        self.get_logger().info("[MOCK] Auto-confirming in 2s")
         self._current_payload = payload
         threading.Timer(2.0, self._publish_confirmation).start()
         self._publish_status("mock_displayed", payload)
 
     # ------------------------------------------------------------------
-    # GUI dispatch (called from main thread)
-    # ------------------------------------------------------------------
-
-    def _show_next_pending(self):
-        """
-        Called from the main thread. Shows one pending dispatch window.
-        Returns True if a window was shown, False if queue was empty.
-        """
-        with self._pending_lock:
-            if not self._pending_dispatches:
+    def show_next(self) -> bool:
+        """Called from main thread. Returns True if a window was shown."""
+        with self._lock:
+            if not self._pending:
                 return False
-            payload = self._pending_dispatches.pop(0)
+            payload = self._pending.pop(0)
 
         self._current_payload = payload
-        med_db = self._medicines_db.get("medicines", {})
-
-        # Build per-medicine detail dict
-        medicine_details = {}
-        for med in payload.get("medicines", []):
-            med_id = med.get("id", "")
-            medicine_details[med_id] = med_db.get(med_id, {})
-
         self._publish_status("displaying", payload)
 
         win = MedicineWindow(
-            dispatch_payload=payload,
-            medicine_details=medicine_details,
-            on_confirm=self._on_patient_confirmed,
-            on_remind=self._on_patient_remind,
-            on_timeout=self._on_window_timeout,
+            payload        = payload,
+            medicines_db   = self._med_db,
+            on_confirm     = self._confirmed,
+            on_remind      = self._remind,
+            on_timeout     = self._timeout,
         )
-        win.run()   # blocks until window closes
+        win.run()  # blocks until window closes
         return True
 
     # ------------------------------------------------------------------
-    # Patient interaction callbacks
-    # ------------------------------------------------------------------
-
-    def _on_patient_confirmed(self):
+    def _confirmed(self):
         self.get_logger().info("Patient confirmed medicine intake.")
         self._publish_confirmation()
         self._publish_status("confirmed", self._current_payload)
         self._current_payload = None
 
-    def _on_patient_remind(self):
+    def _remind(self):
         payload = self._current_payload
-        self.get_logger().info(
-            f"Patient requested reminder in {REMIND_DELAY_SECONDS}s."
-        )
+        self.get_logger().info(f"Reminder requested in {REMIND_DELAY_S}s.")
         self._publish_status("remind_requested", payload)
         self._reminder_timer = threading.Timer(
-            REMIND_DELAY_SECONDS,
-            self._reminder_callback,
-            args=[payload],
-        )
+            REMIND_DELAY_S, self._re_queue, args=[payload])
         self._reminder_timer.start()
         self._current_payload = None
 
-    def _on_window_timeout(self):
-        self.get_logger().warn(
-            "Medicine window timed out - no patient response."
-        )
+    def _timeout(self):
+        self.get_logger().warn("Display timed out — no patient response.")
         self._publish_status("timeout", self._current_payload)
         self._current_payload = None
 
-    def _reminder_callback(self, payload: dict):
-        self.get_logger().info("Reminder triggered, re-queueing dispatch.")
-        with self._pending_lock:
-            self._pending_dispatches.insert(0, payload)
+    def _re_queue(self, payload: dict):
+        with self._lock:
+            self._pending.insert(0, payload)
+        self.get_logger().info("Reminder: re-queued dispatch.")
 
     # ------------------------------------------------------------------
-    # Confirmation publisher
-    # ------------------------------------------------------------------
-
     def _publish_confirmation(self):
         payload = self._current_payload
         if not payload:
             return
-        med_db = self._medicines_db.get("medicines", {})
-        for med in payload.get("medicines", []):
-            med_id  = med.get("id", "")
-            details = med_db.get(med_id, {})
-            event   = MedicineEvent()
-            event.header.stamp         = self.get_clock().now().to_msg()
-            event.patient_id           = payload.get("patient_id", "")
-            event.medicine_id          = med_id
-            event.medicine_name        = details.get("name", med_id)
-            event.schedule_slot        = payload.get("slot", "")
-            event.dispensed            = True
-            event.confirmed_by_patient = True
-            event.notes                = "Confirmed via display panel"
-            self._event_pub.publish(event)
-
-    # ------------------------------------------------------------------
-    # Status publisher
-    # ------------------------------------------------------------------
+        for m in payload.get("medicines", []):
+            med_id  = m.get("id", "")
+            detail  = self._med_db.get(med_id, {})
+            ev                    = MedicineEvent()
+            ev.header.stamp       = self.get_clock().now().to_msg()
+            ev.patient_id         = payload.get("patient_id", "")
+            ev.medicine_id        = med_id
+            ev.medicine_name      = detail.get("display_name", med_id)
+            ev.schedule_slot      = payload.get("slot", "")
+            ev.dispensed          = True
+            ev.confirmed_by_patient = True
+            ev.notes              = "Confirmed via touchscreen"
+            self._event_pub.publish(ev)
 
     def _publish_status(self, state: str, payload):
-        status = {
+        msg      = String()
+        msg.data = json.dumps({
             "state":      state,
             "patient_id": payload.get("patient_id") if payload else None,
-            "slot":       payload.get("slot") if payload else None,
-        }
-        msg = String()
-        msg.data = json.dumps(status)
+            "slot":       payload.get("slot")       if payload else None,
+        })
         self._status_pub.publish(msg)
 
 
@@ -518,10 +419,7 @@ def main(args=None):
     rclpy.init(args=args)
     node = DisplayNode()
 
-    use_mock_hw = os.environ.get("USE_MOCK_HW", "false").lower() == "true"
-
-    if use_mock_hw:
-        # In headless mode, just spin ROS without any GUI
+    if os.environ.get("USE_MOCK_HW", "").lower() in ("1","true","yes"):
         try:
             rclpy.spin(node)
         except KeyboardInterrupt:
@@ -531,23 +429,21 @@ def main(args=None):
             rclpy.shutdown()
         return
 
-    # Real mode: run ROS spin in a background thread,
-    # process tkinter windows on the main thread.
-    ros_thread = threading.Thread(target=rclpy.spin, args=(node,), daemon=True)
-    ros_thread.start()
+    # Real mode: ROS in background, tkinter on main thread
+    spin_thread = threading.Thread(target=rclpy.spin, args=(node,), daemon=True)
+    spin_thread.start()
 
     try:
         while rclpy.ok():
-            shown = node._show_next_pending()
+            shown = node.show_next()
             if not shown:
-                # Nothing to display - sleep briefly and poll again
-                time.sleep(0.25)
+                time.sleep(0.2)
     except KeyboardInterrupt:
         pass
     finally:
         node.destroy_node()
         rclpy.shutdown()
-        ros_thread.join(timeout=2.0)
+        spin_thread.join(timeout=2.0)
 
 
 if __name__ == "__main__":

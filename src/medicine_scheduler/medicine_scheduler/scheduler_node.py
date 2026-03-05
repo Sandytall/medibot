@@ -1,31 +1,25 @@
 #!/usr/bin/env python3
 """
-scheduler_node.py - Medicine Scheduler Node for MediBot
+scheduler_node.py - Medicine Scheduler for MediBot
 
-Loads a medicine schedule from ~/medical/config/medicine_schedule.yaml and
-periodically checks if it is time to dispatch medicine to a patient.
+Reads ~/medical/config/medicine_schedule.yaml every check_interval_s seconds.
+When the current time is within ±5 minutes of a patient's scheduled slot AND
+that slot has not yet been dispatched today, it fires a dispatch message.
 
-Dispatch logic:
-  - Every `check_interval_s` seconds (default 30), compare current wall-clock
-    time against each schedule slot for each patient.
-  - A slot is "due" when the current time is within ±5 minutes of the
-    configured slot time AND the slot has not already been dispatched today.
-  - On dispatch: publish a JSON string to /medicine_scheduler/dispatch and
-    publish a robot_interfaces/MedicineEvent trigger message to /medicine_event.
-  - Listens on /medicine_event for patient confirmations and logs them.
-  - Publishes upcoming-dose status JSON to /medicine_scheduler/status.
+Dispatch publishes:
+  /medicine_scheduler/dispatch  (std_msgs/String)  JSON payload
+  /medicine_event               (MedicineEvent)    one per medicine in the slot
+
+Confirmations are received back on /medicine_event (confirmed_by_patient=True).
 
 Environment:
-  USE_MOCK_HW=true  ->  accelerated / headless testing mode.
-                        The first patient's first pending slot is dispatched
-                        immediately on startup regardless of wall-clock time.
+  USE_MOCK_HW=true  ->  dispatch first patient immediately on startup for testing.
 """
 
 import json
 import os
 import threading
-import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 
 import rclpy
@@ -37,287 +31,204 @@ from std_msgs.msg import String
 from robot_interfaces.msg import MedicineEvent
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-def _expand(path: str) -> Path:
-    return Path(path).expanduser().resolve()
-
-
-def _load_yaml(path: Path) -> dict:
-    if not path.exists():
-        return {}
-    with open(path, "r") as fh:
-        return yaml.safe_load(fh) or {}
-
-
-# Default slot times (HH:MM)
 DEFAULT_SLOT_TIMES = {
     "morning":   "09:00",
     "afternoon": "13:00",
     "evening":   "18:00",
     "night":     "21:00",
 }
+WINDOW_MINUTES = 5
 
-DISPATCH_WINDOW_MINUTES = 5  # ± minutes around slot time
 
+def _load_yaml(path: Path) -> dict:
+    if not path.exists():
+        return {}
+    with open(path) as f:
+        return yaml.safe_load(f) or {}
 
-# ---------------------------------------------------------------------------
-# Node
-# ---------------------------------------------------------------------------
 
 class SchedulerNode(Node):
     def __init__(self):
         super().__init__("scheduler_node")
 
-        # --- Parameters ---
-        self.declare_parameter(
-            "config_path",
-            str(Path("~/medical/config/medicine_schedule.yaml").expanduser()),
-        )
+        self.declare_parameter("config_path",
+            str(Path("~/medical/config/medicine_schedule.yaml").expanduser()))
         self.declare_parameter("check_interval_s", 30)
 
-        config_path_str = self.get_parameter("config_path").value
-        self._config_path = _expand(config_path_str)
+        self._config_path    = Path(self.get_parameter("config_path").value).expanduser()
         self._check_interval = self.get_parameter("check_interval_s").value
+        self._use_mock       = os.environ.get("USE_MOCK_HW", "").lower() in ("1","true","yes")
 
-        self._use_mock_hw = os.environ.get("USE_MOCK_HW", "false").lower() == "true"
-
-        # --- Load configs ---
-        self._schedule_cfg: dict = {}
         self._medicines_db: dict = {}
-        self._reload_configs()
+        self._schedule_cfg: dict = {}
+        self._slot_times         = dict(DEFAULT_SLOT_TIMES)
+        self._dispensed_log: dict = {}   # "YYYY-MM-DD|patient_id|slot" -> True
+        self._confirmations: dict = {}   # "patient_id|slot" -> bool
+        self._lock = threading.Lock()
 
-        # Slot times: can be overridden per-patient or globally in YAML
-        self._slot_times: dict = dict(DEFAULT_SLOT_TIMES)
-        global_times = self._schedule_cfg.get("slot_times", {})
-        self._slot_times.update(global_times)
+        latch = QoSProfile(depth=10, reliability=ReliabilityPolicy.RELIABLE,
+                           durability=DurabilityPolicy.TRANSIENT_LOCAL)
 
-        # dispensed_log: { "YYYY-MM-DD|patient_id|slot": True }
-        self._dispensed_log: dict = {}
-        self._log_lock = threading.Lock()
+        self._dispatch_pub = self.create_publisher(String,        "/medicine_scheduler/dispatch", 10)
+        self._event_pub    = self.create_publisher(MedicineEvent, "/medicine_event",              10)
+        self._status_pub   = self.create_publisher(String,        "/medicine_scheduler/status",   latch)
 
-        # Confirmation tracking
-        self._confirmations: dict = {}   # "patient_id|slot|date" -> bool
-
-        # --- Publishers ---
-        latch_qos = QoSProfile(
-            depth=10,
-            reliability=ReliabilityPolicy.RELIABLE,
-            durability=DurabilityPolicy.TRANSIENT_LOCAL,
-        )
-
-        self._dispatch_pub = self.create_publisher(String, "/medicine_scheduler/dispatch", 10)
-        self._event_pub    = self.create_publisher(MedicineEvent, "/medicine_event", 10)
-        self._status_pub   = self.create_publisher(String, "/medicine_scheduler/status", latch_qos)
-
-        # --- Subscribers ---
-        self._event_sub = self.create_subscription(
-            MedicineEvent,
-            "/medicine_event",
-            self._on_medicine_event,
-            10,
-        )
-
-        # --- Timer ---
-        self._timer = self.create_timer(float(self._check_interval), self._check_schedule)
+        self.create_subscription(MedicineEvent, "/medicine_event", self._on_event, 10)
+        self.create_timer(float(self._check_interval), self._tick)
 
         self.get_logger().info(
-            f"SchedulerNode started. Config: {self._config_path}, "
-            f"interval: {self._check_interval}s, mock_hw: {self._use_mock_hw}"
-        )
+            f"SchedulerNode ready  config={self._config_path}  "
+            f"interval={self._check_interval}s  mock={self._use_mock}")
 
-        # Mock HW: dispatch first patient immediately for testing
-        if self._use_mock_hw:
-            self.get_logger().info("USE_MOCK_HW=true: triggering immediate dispatch for first patient.")
+        if self._use_mock:
             threading.Timer(2.0, self._mock_dispatch).start()
         else:
-            # Also run an immediate check on startup
-            threading.Timer(1.0, self._check_schedule).start()
+            threading.Timer(1.0, self._tick).start()
 
     # ------------------------------------------------------------------
-    # Config loading
-    # ------------------------------------------------------------------
-
-    def _reload_configs(self):
+    def _reload(self):
         self._schedule_cfg = _load_yaml(self._config_path)
-        medicines_path = _expand("~/medical/config/medicines.yaml")
-        self._medicines_db = _load_yaml(medicines_path)
-        if not self._schedule_cfg:
-            self.get_logger().warn(f"Schedule config not found or empty: {self._config_path}")
-        if not self._medicines_db:
-            self.get_logger().warn("Medicines DB not found or empty: ~/medical/config/medicines.yaml")
+        self._medicines_db = _load_yaml(
+            Path("~/medical/config/medicines.yaml").expanduser())
+
+        global_times = (self._schedule_cfg.get("settings") or {}).get("schedule_slots", {})
+        self._slot_times = {**DEFAULT_SLOT_TIMES, **global_times}
 
     # ------------------------------------------------------------------
-    # Scheduling logic
-    # ------------------------------------------------------------------
+    def _tick(self):
+        self._reload()
+        now      = datetime.now()
+        today    = now.strftime("%Y-%m-%d")
+        upcoming = []
 
-    def _check_schedule(self):
-        """Called every check_interval_s seconds."""
-        self._reload_configs()
-        now = datetime.now()
-        today_str = now.strftime("%Y-%m-%d")
-
-        patients = self._schedule_cfg.get("patients", [])
+        # patients is a DICT  {patient_id -> {name, age, bed, schedule}}
+        patients = self._schedule_cfg.get("patients", {})
         if not patients:
-            self.get_logger().debug("No patients in schedule config.")
             self._publish_status(now, [])
             return
 
-        upcoming = []
+        for pid, info in patients.items():
+            name     = info.get("name", pid)
+            bed      = info.get("bed", "")
+            schedule = info.get("schedule", {})
 
-        for patient in patients:
-            patient_id   = patient.get("patient_id", "unknown")
-            bed          = patient.get("bed", "unknown")
-            patient_name = patient.get("name", patient_id)
-            schedules    = patient.get("schedule", {})  # slot -> [medicine_ids]
-
-            # Per-patient slot time overrides
-            patient_slot_times = dict(self._slot_times)
-            patient_slot_times.update(patient.get("slot_times", {}))
-
-            for slot, medicine_ids in schedules.items():
-                slot_time_str = patient_slot_times.get(slot)
-                if not slot_time_str:
-                    self.get_logger().warn(f"Unknown slot '{slot}' for patient {patient_id}")
+            for slot, slot_data in schedule.items():
+                time_str = self._slot_times.get(slot)
+                if not time_str:
                     continue
-
                 try:
-                    slot_dt = datetime.strptime(
-                        f"{today_str} {slot_time_str}", "%Y-%m-%d %H:%M"
-                    )
-                except ValueError as exc:
-                    self.get_logger().error(f"Bad slot time '{slot_time_str}': {exc}")
+                    slot_dt = datetime.strptime(f"{today} {time_str}", "%Y-%m-%d %H:%M")
+                except ValueError:
                     continue
 
-                log_key = f"{today_str}|{patient_id}|{slot}"
+                log_key       = f"{today}|{pid}|{slot}"
+                mins_until    = (slot_dt - now).total_seconds() / 60.0
+                already_done  = log_key in self._dispensed_log
 
-                # Track upcoming doses
-                minutes_until = (slot_dt - now).total_seconds() / 60.0
                 upcoming.append({
-                    "patient_id":   patient_id,
-                    "patient_name": patient_name,
+                    "patient_id":   pid,
+                    "patient_name": name,
                     "bed":          bed,
                     "slot":         slot,
-                    "scheduled_at": slot_time_str,
-                    "minutes_until": round(minutes_until, 1),
-                    "dispatched":   log_key in self._dispensed_log,
+                    "scheduled_at": time_str,
+                    "minutes_until": round(mins_until, 1),
+                    "dispatched":   already_done,
                 })
 
-                # Check dispatch window
-                delta_minutes = abs((now - slot_dt).total_seconds() / 60.0)
-                if delta_minutes <= DISPATCH_WINDOW_MINUTES:
-                    with self._log_lock:
+                if abs(mins_until) <= WINDOW_MINUTES and not already_done:
+                    with self._lock:
                         if log_key not in self._dispensed_log:
-                            self._dispatch(patient, slot, medicine_ids, bed)
                             self._dispensed_log[log_key] = True
+                            self._dispatch(pid, name, bed, slot, slot_data)
 
         self._publish_status(now, upcoming)
 
-    def _dispatch(self, patient: dict, slot: str, medicine_ids: list, bed: str):
-        patient_id   = patient.get("patient_id", "unknown")
-        patient_name = patient.get("name", patient_id)
-
-        # Build medicines list with details from medicines DB
+    # ------------------------------------------------------------------
+    def _dispatch(self, pid: str, name: str, bed: str, slot: str, slot_data: dict):
+        """Build and publish a dispatch message for one patient slot."""
+        meds_db   = self._medicines_db.get("medicines", {})
         medicines = []
-        for med_id in medicine_ids:
-            med_info = self._medicines_db.get("medicines", {}).get(med_id, {})
-            dose = med_info.get("default_dose", 1)
-            medicines.append({"id": med_id, "dose": dose})
+
+        for entry in (slot_data.get("medicines") or []):
+            med_id = entry.get("id", "")
+            dose   = entry.get("dose", 1)
+            detail = meds_db.get(med_id, {})
+            medicines.append({
+                "id":           med_id,
+                "dose":         dose,
+                "display_name": detail.get("display_name", med_id.replace("_", " ").title()),
+            })
 
         payload = {
-            "patient_id":   patient_id,
-            "patient_name": patient_name,
+            "patient_id":   pid,
+            "patient_name": name,
             "bed":          bed,
             "slot":         slot,
             "medicines":    medicines,
             "timestamp":    datetime.now().isoformat(),
         }
 
-        # Publish dispatch string
-        msg = String()
+        msg      = String()
         msg.data = json.dumps(payload)
         self._dispatch_pub.publish(msg)
-        self.get_logger().info(f"Dispatched: patient={patient_id}, slot={slot}, meds={medicine_ids}")
+        self.get_logger().info(
+            f"Dispatched  patient={pid}  slot={slot}  "
+            f"meds={[m['id'] for m in medicines]}")
 
-        # Publish MedicineEvent trigger (not yet dispensed, just a trigger)
-        for med in medicines:
-            med_info  = self._medicines_db.get("medicines", {}).get(med["id"], {})
-            event_msg = MedicineEvent()
-            event_msg.header.stamp    = self.get_clock().now().to_msg()
-            event_msg.patient_id      = patient_id
-            event_msg.medicine_id     = med["id"]
-            event_msg.medicine_name   = med_info.get("name", med["id"])
-            event_msg.schedule_slot   = slot
-            event_msg.dispensed       = False
-            event_msg.confirmed_by_patient = False
-            event_msg.notes           = f"Scheduled dispatch for bed {bed}"
-            self._event_pub.publish(event_msg)
+        # One MedicineEvent trigger per medicine (not yet confirmed)
+        for m in medicines:
+            ev = MedicineEvent()
+            ev.header.stamp        = self.get_clock().now().to_msg()
+            ev.patient_id          = pid
+            ev.medicine_id         = m["id"]
+            ev.medicine_name       = m["display_name"]
+            ev.schedule_slot       = slot
+            ev.dispensed           = False
+            ev.confirmed_by_patient = False
+            ev.notes               = f"Scheduled  bed={bed}"
+            self._event_pub.publish(ev)
 
     # ------------------------------------------------------------------
-    # Mock HW dispatch
-    # ------------------------------------------------------------------
-
     def _mock_dispatch(self):
-        """Immediately dispatch the first patient's first pending slot."""
-        self._reload_configs()
-        patients = self._schedule_cfg.get("patients", [])
+        self._reload()
+        patients = self._schedule_cfg.get("patients", {})
         if not patients:
-            self.get_logger().info("USE_MOCK_HW: no patients configured, nothing to dispatch.")
             return
-
-        patient = patients[0]
-        schedules = patient.get("schedule", {})
-        if not schedules:
-            self.get_logger().info("USE_MOCK_HW: first patient has no schedule.")
+        pid, info = next(iter(patients.items()))
+        schedule  = info.get("schedule", {})
+        if not schedule:
             return
-
-        slot          = next(iter(schedules))
-        medicine_ids  = schedules[slot]
-        bed           = patient.get("bed", "bed_1")
-        today_str     = datetime.now().strftime("%Y-%m-%d")
-        log_key       = f"{today_str}|{patient.get('patient_id','unknown')}|{slot}"
-
-        with self._log_lock:
+        slot, slot_data = next(iter(schedule.items()))
+        log_key = f"{datetime.now().strftime('%Y-%m-%d')}|{pid}|{slot}"
+        with self._lock:
             if log_key not in self._dispensed_log:
-                self._dispatch(patient, slot, medicine_ids, bed)
                 self._dispensed_log[log_key] = True
-                self.get_logger().info(f"USE_MOCK_HW: mock dispatch complete for slot '{slot}'.")
+                self._dispatch(pid, info.get("name", pid),
+                               info.get("bed", ""), slot, slot_data)
+        self.get_logger().info(f"[MOCK] Dispatched {pid} {slot}")
 
     # ------------------------------------------------------------------
-    # Subscriber callbacks
-    # ------------------------------------------------------------------
-
-    def _on_medicine_event(self, msg: MedicineEvent):
+    def _on_event(self, msg: MedicineEvent):
         if msg.confirmed_by_patient:
             key = f"{msg.patient_id}|{msg.schedule_slot}"
             self._confirmations[key] = True
             self.get_logger().info(
-                f"Confirmation received: patient={msg.patient_id}, "
-                f"medicine={msg.medicine_id}, slot={msg.schedule_slot}"
-            )
+                f"Confirmed  patient={msg.patient_id}  "
+                f"med={msg.medicine_id}  slot={msg.schedule_slot}")
 
     # ------------------------------------------------------------------
-    # Status publisher
-    # ------------------------------------------------------------------
-
     def _publish_status(self, now: datetime, upcoming: list):
-        status = {
-            "timestamp":    now.isoformat(),
-            "upcoming":     upcoming,
-            "dispensed_today": len([k for k in self._dispensed_log
-                                    if k.startswith(now.strftime("%Y-%m-%d"))]),
-            "confirmations": len(self._confirmations),
-        }
-        msg = String()
-        msg.data = json.dumps(status)
+        today = now.strftime("%Y-%m-%d")
+        msg      = String()
+        msg.data = json.dumps({
+            "timestamp":       now.isoformat(),
+            "upcoming":        upcoming,
+            "dispensed_today": sum(1 for k in self._dispensed_log
+                                   if k.startswith(today)),
+            "confirmations":   len(self._confirmations),
+        })
         self._status_pub.publish(msg)
 
-
-# ---------------------------------------------------------------------------
-# Entry point
-# ---------------------------------------------------------------------------
 
 def main(args=None):
     rclpy.init(args=args)
