@@ -1,0 +1,408 @@
+<?xml version="1.0"?>
+<!--
+  medibot.urdf - MediBot robot description for Gazebo simulation
+
+  Robot layout:
+    - Differential drive: 2 driven wheels + 1 front caster
+    - IMU sensor on base
+    - Two forward-facing cameras (main + face)
+    - Simplified arm stubs (left/right)
+
+  Gazebo plugins:
+    - libgazebo_ros_diff_drive.so  → /cmd_vel → /odom
+    - libgazebo_ros_imu_sensor.so  → /imu/data
+-->
+<robot name="medibot">
+
+  <!-- ================================================================ -->
+  <!-- Materials -->
+  <!-- ================================================================ -->
+  <material name="dark_blue">
+    <color rgba="0.1 0.1 0.4 1.0"/>
+  </material>
+  <material name="grey">
+    <color rgba="0.5 0.5 0.5 1.0"/>
+  </material>
+  <material name="black">
+    <color rgba="0.05 0.05 0.05 1.0"/>
+  </material>
+  <material name="white">
+    <color rgba="0.9 0.9 0.9 1.0"/>
+  </material>
+
+  <!-- ================================================================ -->
+  <!-- Base link (robot body)                                           -->
+  <!-- ================================================================ -->
+  <link name="base_link">
+    <visual>
+      <geometry>
+        <box size="0.50 0.40 0.30"/>
+      </geometry>
+      <material name="dark_blue"/>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="0.50 0.40 0.30"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="10.0"/>
+      <inertia ixx="0.13" ixy="0.0" ixz="0.0"
+               iyy="0.17" iyz="0.0" izz="0.22"/>
+    </inertial>
+  </link>
+
+  <!-- ================================================================ -->
+  <!-- Footprint (Nav2 base frame)                                      -->
+  <!-- ================================================================ -->
+  <link name="base_footprint"/>
+  <joint name="base_footprint_joint" type="fixed">
+    <parent link="base_footprint"/>
+    <child  link="base_link"/>
+    <origin xyz="0 0 0.155" rpy="0 0 0"/>
+  </joint>
+
+  <!-- ================================================================ -->
+  <!-- Left drive wheel                                                 -->
+  <!-- ================================================================ -->
+  <link name="left_wheel">
+    <visual>
+      <geometry>
+        <cylinder radius="0.05" length="0.04"/>
+      </geometry>
+      <material name="black"/>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder radius="0.05" length="0.04"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.5"/>
+      <inertia ixx="0.0003" ixy="0" ixz="0"
+               iyy="0.0003" iyz="0" izz="0.0006"/>
+    </inertial>
+  </link>
+  <joint name="left_wheel_joint" type="continuous">
+    <parent link="base_link"/>
+    <child  link="left_wheel"/>
+    <origin xyz="0.0 0.22 -0.105" rpy="-1.5707 0 0"/>
+    <axis   xyz="0 0 1"/>
+  </joint>
+
+  <!-- ================================================================ -->
+  <!-- Right drive wheel                                                -->
+  <!-- ================================================================ -->
+  <link name="right_wheel">
+    <visual>
+      <geometry>
+        <cylinder radius="0.05" length="0.04"/>
+      </geometry>
+      <material name="black"/>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder radius="0.05" length="0.04"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.5"/>
+      <inertia ixx="0.0003" ixy="0" ixz="0"
+               iyy="0.0003" iyz="0" izz="0.0006"/>
+    </inertial>
+  </link>
+  <joint name="right_wheel_joint" type="continuous">
+    <parent link="base_link"/>
+    <child  link="right_wheel"/>
+    <origin xyz="0.0 -0.22 -0.105" rpy="-1.5707 0 0"/>
+    <axis   xyz="0 0 1"/>
+  </joint>
+
+  <!-- ================================================================ -->
+  <!-- Front caster wheel                                               -->
+  <!-- ================================================================ -->
+  <link name="caster_wheel">
+    <visual>
+      <geometry>
+        <sphere radius="0.025"/>
+      </geometry>
+      <material name="grey"/>
+    </visual>
+    <collision>
+      <geometry>
+        <sphere radius="0.025"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.1"/>
+      <inertia ixx="0.00002" ixy="0" ixz="0"
+               iyy="0.00002" iyz="0" izz="0.00002"/>
+    </inertial>
+  </link>
+  <joint name="caster_joint" type="fixed">
+    <parent link="base_link"/>
+    <child  link="caster_wheel"/>
+    <origin xyz="0.20 0.0 -0.130" rpy="0 0 0"/>
+  </joint>
+
+  <!-- ================================================================ -->
+  <!-- IMU link                                                         -->
+  <!-- ================================================================ -->
+  <link name="imu_link">
+    <inertial>
+      <mass value="0.01"/>
+      <inertia ixx="0.000001" ixy="0" ixz="0"
+               iyy="0.000001" iyz="0" izz="0.000001"/>
+    </inertial>
+  </link>
+  <joint name="imu_joint" type="fixed">
+    <parent link="base_link"/>
+    <child  link="imu_link"/>
+    <origin xyz="0 0 0.05" rpy="0 0 0"/>
+  </joint>
+
+  <!-- ================================================================ -->
+  <!-- Main camera (front)                                              -->
+  <!-- ================================================================ -->
+  <link name="main_camera_link">
+    <visual>
+      <geometry>
+        <box size="0.03 0.08 0.03"/>
+      </geometry>
+      <material name="white"/>
+    </visual>
+    <inertial>
+      <mass value="0.05"/>
+      <inertia ixx="0.00001" ixy="0" ixz="0"
+               iyy="0.00001" iyz="0" izz="0.00001"/>
+    </inertial>
+  </link>
+  <joint name="main_camera_joint" type="fixed">
+    <parent link="base_link"/>
+    <child  link="main_camera_link"/>
+    <origin xyz="0.26 0.0 0.10" rpy="0 0 0"/>
+  </joint>
+  <!-- Optical frame for ROS convention -->
+  <link name="main_camera_optical"/>
+  <joint name="main_camera_optical_joint" type="fixed">
+    <parent link="main_camera_link"/>
+    <child  link="main_camera_optical"/>
+    <origin xyz="0 0 0" rpy="-1.5707 0 -1.5707"/>
+  </joint>
+
+  <!-- ================================================================ -->
+  <!-- Face camera (front, slightly higher — pan/tilt stub)            -->
+  <!-- ================================================================ -->
+  <link name="face_camera_link">
+    <visual>
+      <geometry>
+        <box size="0.03 0.05 0.03"/>
+      </geometry>
+      <material name="white"/>
+    </visual>
+    <inertial>
+      <mass value="0.03"/>
+      <inertia ixx="0.000005" ixy="0" ixz="0"
+               iyy="0.000005" iyz="0" izz="0.000005"/>
+    </inertial>
+  </link>
+  <joint name="face_camera_joint" type="fixed">
+    <parent link="base_link"/>
+    <child  link="face_camera_link"/>
+    <origin xyz="0.26 0.0 0.20" rpy="0 0 0"/>
+  </joint>
+  <link name="face_camera_optical"/>
+  <joint name="face_camera_optical_joint" type="fixed">
+    <parent link="face_camera_link"/>
+    <child  link="face_camera_optical"/>
+    <origin xyz="0 0 0" rpy="-1.5707 0 -1.5707"/>
+  </joint>
+
+  <!-- ================================================================ -->
+  <!-- Left arm (simplified box)                                        -->
+  <!-- ================================================================ -->
+  <link name="left_arm_link">
+    <visual>
+      <geometry>
+        <box size="0.08 0.35 0.06"/>
+      </geometry>
+      <material name="dark_blue"/>
+    </visual>
+    <inertial>
+      <mass value="1.0"/>
+      <inertia ixx="0.005" ixy="0" ixz="0"
+               iyy="0.001" iyz="0" izz="0.005"/>
+    </inertial>
+  </link>
+  <joint name="left_arm_joint" type="fixed">
+    <parent link="base_link"/>
+    <child  link="left_arm_link"/>
+    <origin xyz="0.0 0.24 0.08" rpy="0 0 0"/>
+  </joint>
+
+  <!-- ================================================================ -->
+  <!-- Right arm (simplified box)                                       -->
+  <!-- ================================================================ -->
+  <link name="right_arm_link">
+    <visual>
+      <geometry>
+        <box size="0.08 0.35 0.06"/>
+      </geometry>
+      <material name="dark_blue"/>
+    </visual>
+    <inertial>
+      <mass value="1.0"/>
+      <inertia ixx="0.005" ixy="0" ixz="0"
+               iyy="0.001" iyz="0" izz="0.005"/>
+    </inertial>
+  </link>
+  <joint name="right_arm_joint" type="fixed">
+    <parent link="base_link"/>
+    <child  link="right_arm_link"/>
+    <origin xyz="0.0 -0.24 0.08" rpy="0 0 0"/>
+  </joint>
+
+  <!-- ================================================================ -->
+  <!-- Screen / display front panel                                     -->
+  <!-- ================================================================ -->
+  <link name="screen_link">
+    <visual>
+      <geometry>
+        <box size="0.02 0.28 0.20"/>
+      </geometry>
+      <material name="black"/>
+    </visual>
+    <inertial>
+      <mass value="0.3"/>
+      <inertia ixx="0.002" ixy="0" ixz="0"
+               iyy="0.0005" iyz="0" izz="0.002"/>
+    </inertial>
+  </link>
+  <joint name="screen_joint" type="fixed">
+    <parent link="base_link"/>
+    <child  link="screen_link"/>
+    <origin xyz="0.26 0.0 0.0" rpy="0 0 0"/>
+  </joint>
+
+  <!-- ================================================================ -->
+  <!-- GAZEBO: Differential Drive                                       -->
+  <!-- ================================================================ -->
+  <gazebo>
+    <plugin name="differential_drive_controller"
+            filename="libgazebo_ros_diff_drive.so">
+      <ros>
+        <namespace>/</namespace>
+      </ros>
+      <left_joint>left_wheel_joint</left_joint>
+      <right_joint>right_wheel_joint</right_joint>
+      <wheel_separation>0.44</wheel_separation>
+      <wheel_diameter>0.10</wheel_diameter>
+      <max_wheel_torque>20</max_wheel_torque>
+      <max_wheel_acceleration>1.0</max_wheel_acceleration>
+      <command_topic>/cmd_vel</command_topic>
+      <odometry_topic>/odom</odometry_topic>
+      <odometry_frame>odom</odometry_frame>
+      <robot_base_frame>base_footprint</robot_base_frame>
+      <publish_odom>true</publish_odom>
+      <publish_odom_tf>true</publish_odom_tf>
+      <publish_wheel_tf>false</publish_wheel_tf>
+    </plugin>
+  </gazebo>
+
+  <!-- ================================================================ -->
+  <!-- GAZEBO: IMU                                                      -->
+  <!-- ================================================================ -->
+  <gazebo reference="imu_link">
+    <sensor name="medibot_imu" type="imu">
+      <always_on>true</always_on>
+      <update_rate>50</update_rate>
+      <plugin name="imu_plugin" filename="libgazebo_ros_imu_sensor.so">
+        <ros>
+          <remapping>~/out:=/imu/data</remapping>
+        </ros>
+        <initial_orientation_as_reference>false</initial_orientation_as_reference>
+      </plugin>
+    </sensor>
+  </gazebo>
+
+  <!-- ================================================================ -->
+  <!-- GAZEBO: Main camera                                              -->
+  <!-- ================================================================ -->
+  <gazebo reference="main_camera_link">
+    <sensor name="main_camera" type="camera">
+      <update_rate>30.0</update_rate>
+      <camera>
+        <horizontal_fov>1.3962634</horizontal_fov>
+        <image>
+          <width>640</width>
+          <height>480</height>
+          <format>R8G8B8</format>
+        </image>
+        <clip>
+          <near>0.02</near>
+          <far>300</far>
+        </clip>
+      </camera>
+      <plugin name="main_camera_plugin" filename="libgazebo_ros_camera.so">
+        <camera_name>main_camera</camera_name>
+        <frame_name>main_camera_optical</frame_name>
+        <hack_baseline>0.0</hack_baseline>
+        <ros>
+          <remapping>~/image_raw:=/camera/main/image_raw</remapping>
+          <remapping>~/camera_info:=/camera/main/camera_info</remapping>
+        </ros>
+      </plugin>
+    </sensor>
+  </gazebo>
+
+  <!-- ================================================================ -->
+  <!-- GAZEBO: Face camera                                              -->
+  <!-- ================================================================ -->
+  <gazebo reference="face_camera_link">
+    <sensor name="face_camera" type="camera">
+      <update_rate>15.0</update_rate>
+      <camera>
+        <horizontal_fov>1.3962634</horizontal_fov>
+        <image>
+          <width>320</width>
+          <height>240</height>
+          <format>R8G8B8</format>
+        </image>
+        <clip>
+          <near>0.02</near>
+          <far>300</far>
+        </clip>
+      </camera>
+      <plugin name="face_camera_plugin" filename="libgazebo_ros_camera.so">
+        <camera_name>face_camera</camera_name>
+        <frame_name>face_camera_optical</frame_name>
+        <hack_baseline>0.0</hack_baseline>
+        <ros>
+          <remapping>~/image_raw:=/camera/face/image_raw</remapping>
+          <remapping>~/camera_info:=/camera/face/camera_info</remapping>
+        </ros>
+      </plugin>
+    </sensor>
+  </gazebo>
+
+  <!-- ================================================================ -->
+  <!-- GAZEBO: Physics (friction for wheels and caster)                 -->
+  <!-- ================================================================ -->
+  <gazebo reference="left_wheel">
+    <mu1>1.0</mu1>
+    <mu2>1.0</mu2>
+    <kp>500000.0</kp>
+    <kd>10.0</kd>
+  </gazebo>
+  <gazebo reference="right_wheel">
+    <mu1>1.0</mu1>
+    <mu2>1.0</mu2>
+    <kp>500000.0</kp>
+    <kd>10.0</kd>
+  </gazebo>
+  <gazebo reference="caster_wheel">
+    <mu1>0.01</mu1>
+    <mu2>0.01</mu2>
+  </gazebo>
+
+</robot>

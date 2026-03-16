@@ -184,7 +184,7 @@ class PatientDBNode(Node):
                     msg.medicine_name,
                     msg.schedule_slot,
                     int(msg.dispensed),
-                    int(msg.confirmed),
+                    int(msg.confirmed_by_patient),
                     now,
                 ),
             )

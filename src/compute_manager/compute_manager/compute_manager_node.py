@@ -186,7 +186,7 @@ class ComputeManagerNode(Node):
             msg.node_name = self._node_name
             msg.cpu_percent = float(cpu)
             msg.memory_percent = float(mem)
-            msg.temperature_celsius = float(temp)
+            msg.temperature_c = float(temp)
             msg.overloaded = overloaded
             self._health_pub.publish(msg)
 

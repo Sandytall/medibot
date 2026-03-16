@@ -166,24 +166,19 @@ class FaceTrackerNode(Node):
 
     def _detection_callback(self, msg):
         """Handle incoming FaceDetection messages."""
-        if msg.num_faces == 0 or not msg.bounding_boxes:
-            # No face visible - handled by watchdog timeout
+        # msg carries one face per message; skip if confidence is zero
+        if msg.confidence <= 0.0:
             return
 
         self._last_detection_time = time.monotonic()
 
-        # Track the first detected face (primary subject)
-        bbox_origin = msg.bounding_boxes[0]
-        face_x = bbox_origin.x
-        face_y = bbox_origin.y
-
-        # Estimate face centre (origin is top-left of bounding box)
-        face_cx = face_x + NOMINAL_FACE_SIZE_PX / 2.0
-        face_cy = face_y + NOMINAL_FACE_SIZE_PX / 2.0
+        # bbox fields are normalized 0-1; convert to pixel coordinates
+        face_cx = (msg.bbox_x + msg.bbox_w / 2.0) * self.image_width
+        face_cy = (msg.bbox_y + msg.bbox_h / 2.0) * self.image_height
 
         pan_delta, tilt_delta = self._compute_corrections(face_cx, face_cy)
 
-        patient_id = msg.patient_ids[0] if msg.patient_ids else 'unknown'
+        patient_id = msg.patient_id if msg.patient_id else 'unknown'
         self.get_logger().debug(
             f'Tracking {patient_id}: face_centre=({face_cx:.1f},{face_cy:.1f}), '
             f'pan_delta={pan_delta:.3f}, tilt_delta={tilt_delta:.3f}'

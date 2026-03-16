@@ -124,12 +124,20 @@ class FaceCameraNode(Node):
                 f'({self._width}x{self._height} @ {self._fps} fps)')
             self._cap = cv2.VideoCapture(self._device_index)
             if not self._cap.isOpened():
-                self.get_logger().error(
-                    f'Cannot open face camera at index {self._device_index}.')
-                raise RuntimeError('Face camera open failed')
-            self._cap.set(cv2.CAP_PROP_FRAME_WIDTH, self._width)
-            self._cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self._height)
-            self._cap.set(cv2.CAP_PROP_FPS, self._fps)
+                # Try fallback to device 0 (laptop webcam shared with main camera)
+                self.get_logger().warn(
+                    f'Cannot open face camera at index {self._device_index}. '
+                    f'Trying device 0 as fallback.')
+                self._cap = cv2.VideoCapture(0)
+            if not self._cap.isOpened():
+                self.get_logger().warn(
+                    'No camera available — switching to mock frame generation.')
+                self._use_mock = True
+                self._cap = None
+            else:
+                self._cap.set(cv2.CAP_PROP_FRAME_WIDTH, self._width)
+                self._cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self._height)
+                self._cap.set(cv2.CAP_PROP_FPS, self._fps)
 
         # ---- Bridge & publisher --------------------------------------------
         self._bridge = CvBridge()

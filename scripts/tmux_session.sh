@@ -1,42 +1,51 @@
 #!/bin/bash
-# MediBot tmux development session
+# MediBot tmux session — 2 windows x 4 panes (2x2 grid each)
+# Switch windows : Ctrl+b 0  /  Ctrl+b 1
+# Move panes     : Ctrl+b arrow keys
+# Zoom pane      : Ctrl+b z (toggle)
+# Detach         : Ctrl+b d  |  Reattach: tmux attach -t medibot
+
 SESSION="medibot"
 WORKSPACE="/home/sandeep/medical"
-ROS_SETUP="source /opt/ros/humble/setup.bash && source $WORKSPACE/install/setup.bash 2>/dev/null || true"
+MOCK="${USE_MOCK_HW:-true}"
 
-tmux new-session -d -s $SESSION -n "core"
+ROS="source /opt/ros/humble/setup.bash && source $WORKSPACE/install/setup.bash && export USE_MOCK_HW=$MOCK"
+RUN="ros2 run"
 
-# Window 0: Navigation/SLAM
-tmux send-keys -t $SESSION:0 "$ROS_SETUP && echo 'Window: Navigation'" Enter
+tmux kill-session -t $SESSION 2>/dev/null
 
-# Window 1: Sensing
-tmux new-window -t $SESSION:1 -n "sensing"
-tmux send-keys -t $SESSION:1 "$ROS_SETUP && echo 'Window: Sensing'" Enter
+# Free port 8080 from any previous dashboard instance
+fuser -k 8080/tcp 2>/dev/null || true
 
-# Window 2: AI Brain
-tmux new-window -t $SESSION:2 -n "ai_brain"
-tmux send-keys -t $SESSION:2 "$ROS_SETUP && echo 'Window: AI Brain'" Enter
+# ── Window 0: Sensing & Launch (4 panes, 2x2) ────────────────────────────────
+tmux new-session -d -s $SESSION -n "sensing" -x 220 -y 50
 
-# Window 3: Vision
-tmux new-window -t $SESSION:3 -n "vision"
-tmux send-keys -t $SESSION:3 "$ROS_SETUP && echo 'Window: Vision'" Enter
+# Start with pane 0, split into 2x2
+tmux split-window -t $SESSION:0 -h          # left | right
+tmux split-window -t $SESSION:0.0 -v        # top-left | bottom-left
+tmux split-window -t $SESSION:0.2 -v        # top-right | bottom-right
+tmux select-layout -t $SESSION:0 tiled
 
-# Window 4: Arms
-tmux new-window -t $SESSION:4 -n "arms"
-tmux send-keys -t $SESSION:4 "$ROS_SETUP && echo 'Window: Arms'" Enter
+tmux send-keys -t $SESSION:0.0 "$ROS && ros2 launch robot_bringup robot_full.launch.py use_sim:=true use_mock_hw:=$MOCK" Enter
+tmux send-keys -t $SESSION:0.1 "$ROS && sleep 2 && $RUN motor_driver_node motor_driver" Enter
+tmux send-keys -t $SESSION:0.2 "$ROS && sleep 2 && $RUN imu_mpu6050 imu_node" Enter
+tmux send-keys -t $SESSION:0.3 "$ROS && sleep 2 && $RUN camera_node face_camera" Enter
 
-# Window 5: Medicine
-tmux new-window -t $SESSION:5 -n "medicine"
-tmux send-keys -t $SESSION:5 "$ROS_SETUP && echo 'Window: Medicine'" Enter
+# ── Window 1: AI & Vision (4 panes, 2x2) ─────────────────────────────────────
+tmux new-window -t $SESSION:1 -n "ai_vision"
 
-# Window 6: Dashboard
-tmux new-window -t $SESSION:6 -n "dashboard"
-tmux send-keys -t $SESSION:6 "$ROS_SETUP && echo 'Window: Dashboard'" Enter
+tmux split-window -t $SESSION:1 -h
+tmux split-window -t $SESSION:1.0 -v
+tmux split-window -t $SESSION:1.2 -v
+tmux select-layout -t $SESSION:1 tiled
 
-# Window 7: Monitor
-tmux new-window -t $SESSION:7 -n "monitor"
-tmux send-keys -t $SESSION:7 "htop" Enter
+tmux send-keys -t $SESSION:1.0 "$ROS && sleep 3 && $RUN face_recognition_node face_detector" Enter
+tmux send-keys -t $SESSION:1.1 "$ROS && sleep 3 && $RUN ai_brain ai_brain_node" Enter
+tmux send-keys -t $SESSION:1.2 "$ROS && sleep 3 && $RUN medicine_scheduler scheduler_node" Enter
+tmux send-keys -t $SESSION:1.3 "$ROS && sleep 3 && $RUN doctor_dashboard dashboard_node" Enter
 
+# Focus window 0, pane 0
 tmux select-window -t $SESSION:0
+tmux select-pane -t $SESSION:0.0
+
 tmux attach-session -t $SESSION
-echo "MediBot tmux session started. Attach with: tmux attach -t $SESSION"

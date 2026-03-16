@@ -316,7 +316,7 @@ class MotorDriverNode(Node):
         self.declare_parameter('cmd_timeout',         0.50)
         self.declare_parameter('ticks_per_rev',       1440)
         self.declare_parameter('left_motor_inverted', False)
-        self.declare_parameter('right_motor_inverted',True)
+        self.declare_parameter('right_motor_inverted', True)
         # GPIO pins
         self.declare_parameter('pin_left_in1',    17)
         self.declare_parameter('pin_left_in2',    18)
@@ -368,7 +368,8 @@ class MotorDriverNode(Node):
                 )
             except Exception as exc:
                 self.get_logger().error(f'GPIO init failed: {exc}')
-                raise
+                self.get_logger().warn('Falling back to MockGPIO.')
+                self._gpio = MockGPIO(left_inverted=left_inv, right_inverted=right_inv)
 
         # ---- State ---------------------------------------------------------
         self._odometry = DeadReckoningOdometry(wheel_radius, track_width, ticks_per_rev)

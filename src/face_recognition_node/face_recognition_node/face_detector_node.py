@@ -31,7 +31,6 @@ from rclpy.parameter import Parameter
 
 from sensor_msgs.msg import Image
 from std_msgs.msg import Header
-from geometry_msgs.msg import Point
 
 # cv_bridge / OpenCV
 try:
@@ -231,28 +230,28 @@ class FaceDetectorNode(Node):
         # Limit to max_faces
         faces = raw_faces[: self.max_faces] if len(raw_faces) > 0 else []
 
-        if self.pub_detections is not None and RI_AVAILABLE:
-            det_msg = FaceDetection()
-            det_msg.header = msg.header
-            det_msg.num_faces = len(faces)
-            det_msg.patient_ids = []
-            det_msg.confidences = []
-            det_msg.bounding_boxes = []
-
+        img_h, img_w = cv_image.shape[:2]
         annotated = cv_image.copy() if self.publish_annotated else None
 
         for x, y, w, h in faces:
             patient_id, confidence = self._identify_face(rgb_image, (x, y, w, h))
 
             if self.pub_detections is not None and RI_AVAILABLE:
-                det_msg.patient_ids.append(patient_id)
-                det_msg.confidences.append(confidence)
-                # Store bbox as flat [x, y, w, h]
-                bbox_point = Point()
-                bbox_point.x = float(x)
-                bbox_point.y = float(y)
-                bbox_point.z = 0.0
-                det_msg.bounding_boxes.append(bbox_point)
+                det_msg = FaceDetection()
+                det_msg.header = msg.header
+                det_msg.patient_id = patient_id
+                det_msg.patient_name = (
+                    self.known_encodings[patient_id].get('name', '')
+                    if patient_id != 'unknown' and patient_id in self.known_encodings
+                    else ''
+                )
+                det_msg.confidence = float(confidence)
+                det_msg.bbox_x = float(x) / img_w
+                det_msg.bbox_y = float(y) / img_h
+                det_msg.bbox_w = float(w) / img_w
+                det_msg.bbox_h = float(h) / img_h
+                det_msg.is_registered = patient_id != 'unknown'
+                self.pub_detections.publish(det_msg)
 
             if self.publish_annotated and annotated is not None:
                 color = (0, 255, 0) if patient_id != 'unknown' else (0, 0, 255)
@@ -262,9 +261,6 @@ class FaceDetectorNode(Node):
                     annotated, label, (x, y - 8),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1, cv2.LINE_AA
                 )
-
-        if self.pub_detections is not None and RI_AVAILABLE:
-            self.pub_detections.publish(det_msg)
 
         if self.publish_annotated and annotated is not None:
             try:
@@ -286,15 +282,14 @@ class FaceDetectorNode(Node):
         msg = FaceDetection()
         msg.header.stamp = self.get_clock().now().to_msg()
         msg.header.frame_id = 'camera_frame'
-        msg.num_faces = 1
-        msg.patient_ids = ['P001']
-        msg.confidences = [0.95]
-
-        bbox = Point()
-        bbox.x = 100.0  # x
-        bbox.y = 80.0   # y
-        bbox.z = 0.0
-        msg.bounding_boxes = [bbox]
+        msg.patient_id = 'P001'
+        msg.patient_name = 'Ramesh Kumar'
+        msg.confidence = 0.95
+        msg.bbox_x = 0.3
+        msg.bbox_y = 0.2
+        msg.bbox_w = 0.2
+        msg.bbox_h = 0.3
+        msg.is_registered = True
 
         self.pub_detections.publish(msg)
         self.get_logger().info('[MOCK] Published synthetic FaceDetection for patient P001')

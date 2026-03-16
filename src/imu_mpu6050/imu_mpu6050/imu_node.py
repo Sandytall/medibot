@@ -198,7 +198,8 @@ class IMUNode(Node):
                 self._sensor = MPU6050Hardware(bus, address, self.get_logger())
             except Exception as exc:
                 self.get_logger().error(f'Failed to initialise MPU6050: {exc}')
-                raise
+                self.get_logger().warn('Falling back to mock IMU data.')
+                self._sensor = MPU6050Mock()
 
         # ---- Publisher -----------------------------------------------------
         self._pub = self.create_publisher(Imu, '/imu/data_raw', 10)
