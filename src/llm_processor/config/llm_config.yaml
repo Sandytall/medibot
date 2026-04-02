@@ -1,0 +1,131 @@
+# LLM Configuration for MediBot Pi5
+# ================================
+
+llm_brain_node:
+  ros__parameters:
+    # LLM Model Configuration
+    llm_model: "llama2:7b"              # Ollama model name
+    ollama_host: "localhost"            # Ollama server host
+    ollama_port: 11434                  # Ollama server port
+
+    # Speech Recognition Configuration
+    whisper_model: "base"               # Whisper model (tiny, base, small, medium, large)
+
+    # Text-to-Speech Configuration
+    tts_engine: "pyttsx3"               # TTS engine (pyttsx3, gtts, espeak)
+
+    # Medical Mode Settings
+    medical_mode: true                  # Enable medical-specific prompts
+    max_response_length: 200            # Maximum words in LLM response
+    conversation_timeout: 30.0          # Minutes before context reset
+
+    # Patient Interaction Settings
+    enable_patient_tracking: true       # Track individual patients
+    auto_extract_medical_data: true     # Extract structured data from conversations
+    priority_detection: true            # Detect urgent vs routine queries
+
+audio_processor_node:
+  ros__parameters:
+    # Audio Processing Settings
+    sample_rate: 16000                  # Target sample rate for processing
+    chunk_size: 1024                    # Audio processing chunk size
+
+    # Voice Activity Detection
+    vad_threshold: 0.01                 # Energy threshold for speech detection
+    vad_aggressiveness: 2               # WebRTC VAD aggressiveness (0-3)
+    speech_timeout: 2.0                 # Seconds of silence before processing
+
+    # Audio Enhancement
+    noise_reduction: true               # Enable noise reduction
+    auto_gain_control: true             # Automatic gain control
+
+speech_synthesizer_node:
+  ros__parameters:
+    # TTS Engine Settings
+    tts_engine: "pyttsx3"               # Primary TTS engine
+    voice_rate: 150                     # Speech rate (words per minute)
+    voice_volume: 0.9                   # Voice volume (0.0-1.0)
+    language: "en"                      # Language code
+
+    # Audio Output Settings
+    output_format: "wav"                # Audio output format
+    sample_rate: 22050                  # Output sample rate
+
+    # Voice Selection (leave empty for auto-selection)
+    voice_id: ""                        # Specific voice ID (optional)
+
+    # Medical Robot Voice Characteristics
+    prefer_female_voice: true           # Prefer female voice for medical assistant
+    slow_speech_for_elderly: true       # Automatically slow down for elderly patients
+
+# Ollama Model Management
+# =====================
+ollama_models:
+  # Available models for different use cases
+  primary: "llama2:7b"                 # Main conversation model
+  medical: "medllama2:7b"              # Medical-specific model (if available)
+  emergency: "llama2:13b"              # Higher capacity model for complex cases
+
+  # Model switching thresholds
+  switch_to_medical_keywords:
+    - "diagnosis"
+    - "prescription"
+    - "medical history"
+    - "symptoms"
+    - "treatment"
+
+  switch_to_emergency_keywords:
+    - "emergency"
+    - "urgent"
+    - "can't breathe"
+    - "chest pain"
+    - "severe pain"
+
+# Medical Knowledge Base Integration
+# =================================
+medical_knowledge:
+  # Enable integration with medical databases
+  enable_drug_database: true           # Access to medicine information
+  enable_symptom_checker: true         # Basic symptom assessment
+  enable_vital_signs: true             # Process vital sign data
+
+  # Safety Settings
+  always_defer_to_doctor: true         # Never provide medical diagnoses
+  log_all_interactions: true           # Log for medical record keeping
+  patient_privacy_mode: true           # Enable privacy protections
+
+# Network and Performance Settings
+# ===============================
+networking:
+  # ROS2 DDS Settings for Pi4 ↔ Pi5 communication
+  ros_domain_id: 42                    # Must match Pi4 setting
+  dds_discovery_timeout: 10.0          # Seconds to wait for node discovery
+  max_message_size: 1048576            # 1MB max message size for audio
+
+performance:
+  # Resource Management
+  max_concurrent_requests: 3           # Maximum parallel LLM requests
+  audio_buffer_size: 4096              # Audio processing buffer size
+  llm_timeout: 30.0                    # LLM query timeout in seconds
+
+  # Memory Management
+  context_cleanup_interval: 300.0      # Clean old context every 5 minutes
+  max_conversation_history: 50         # Maximum messages to keep
+
+# Logging and Debugging
+# ====================
+logging:
+  level: "INFO"                        # Log level (DEBUG, INFO, WARN, ERROR)
+  log_audio_processing: false          # Log detailed audio processing info
+  log_llm_queries: true                # Log LLM requests/responses
+  log_patient_interactions: true       # Log patient conversation summaries
+
+  # File Logging (optional)
+  enable_file_logging: false           # Save logs to files
+  log_directory: "/var/log/medibot"    # Log file directory
+
+debug:
+  # Development and Testing
+  mock_llm_responses: false            # Use mock LLM for testing
+  simulate_audio_input: false          # Generate test audio
+  verbose_speech_recognition: false    # Detailed STT logging

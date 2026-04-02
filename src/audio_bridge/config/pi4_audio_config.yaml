@@ -1,0 +1,93 @@
+# Pi4 Audio I/O Configuration for MediBot
+# =========================================
+
+pi4_audio_io_node:
+  ros__parameters:
+    # Audio Device Configuration
+    input_device: -1                    # Input device index (-1 for auto-detect)
+    output_device: -1                   # Output device index (-1 for auto-detect)
+
+    # Audio Settings
+    sample_rate: 16000                  # Sample rate (Hz)
+    chunk_size: 1024                    # Processing chunk size
+    channels: 1                         # Number of channels (1=mono, 2=stereo)
+    volume: 1.0                         # Playback volume (0.0-1.0)
+
+    # Capture Settings
+    auto_start_capture: true            # Start capture automatically
+    echo_cancellation: true             # Enable echo cancellation
+
+    # Performance Settings
+    buffer_size: 2048                   # Audio buffer size
+    latency: 0.1                        # Target latency (seconds)
+
+# Audio Device Preferences
+# ========================
+# These settings help the auto-detection find the right devices
+
+device_preferences:
+  # Input device preference order
+  input_keywords:
+    - "usb"                             # Prefer USB microphones
+    - "microphone"                      # Look for microphone devices
+    - "capture"                         # Generic capture devices
+
+  # Output device preference order
+  output_keywords:
+    - "bcm2835"                         # Pi4 built-in audio (3.5mm jack)
+    - "built-in"                        # Built-in audio devices
+    - "headphones"                      # Headphone outputs
+    - "speakers"                        # Speaker outputs
+
+# Network Communication
+# ====================
+ros_communication:
+  # ROS2 DDS settings for Pi4 ↔ Pi5
+  domain_id: 42                         # Must match Pi5 setting
+  qos_profile: "sensor_data"            # QoS for audio data
+
+# Audio Processing
+# ===============
+processing:
+  # Noise reduction
+  enable_noise_gate: true               # Enable noise gate
+  noise_gate_threshold: 0.01            # Threshold for noise gate
+
+  # Automatic gain control
+  enable_agc: true                      # Automatic gain control
+  agc_target_level: 0.5                 # Target audio level
+
+  # Voice activity detection
+  enable_vad: true                      # Voice activity detection
+  vad_sensitivity: 0.5                  # VAD sensitivity (0.0-1.0)
+
+# Hardware-Specific Settings
+# ==========================
+pi4_hardware:
+  # GPIO settings (if using GPIO audio)
+  gpio_audio_enable: false              # Use GPIO for audio (advanced)
+
+  # Audio codec settings
+  force_audio_codec: ""                 # Force specific codec (leave empty for auto)
+
+  # Performance optimization
+  cpu_affinity: [2, 3]                  # CPU cores for audio processing
+  priority: "high"                      # Process priority
+
+# Debugging and Monitoring
+# ========================
+debug:
+  log_audio_levels: false               # Log audio input levels
+  log_device_info: true                 # Log detected audio devices
+  save_audio_samples: false             # Save audio samples for debugging
+  audio_sample_directory: "/tmp/medibot_audio"
+
+monitoring:
+  # Performance monitoring
+  monitor_latency: true                 # Monitor audio latency
+  monitor_dropouts: true                # Monitor audio dropouts
+  report_interval: 30.0                 # Status report interval (seconds)
+
+  # Health checks
+  check_device_health: true             # Check if devices are responsive
+  device_check_interval: 10.0           # Device health check interval (seconds)
