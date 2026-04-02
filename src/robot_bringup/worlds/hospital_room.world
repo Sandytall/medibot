@@ -1,0 +1,414 @@
+<?xml version="1.0"?>
+<!--
+  hospital_room.world  —  MediBot 3-zone hospital ward
+
+  Layout (top view, not to scale)
+  ─────────────────────────────────────────────────────────────────────
+  y=11  +════════════════════════╦════════════════════════+
+        ║                        ║                        ║
+  y=9.5 ║  [bed3]                ║                [bed6]  ║
+        ║                        ║                        ║
+  y=7.5 ║  [bed2]        WARD A  ║  WARD B        [bed5]  ║
+        ║                        ║                        ║
+  y=5.0 ║  [bed1]                ║                [bed4]  ║
+        ║                        ║                        ║
+  y=3.5 ╠═══╗  door A ╔══════════╬══════════╗  door B ╔══╣
+        ║   ║          ║          ║          ║          ║  ║
+  y=1.5 ║home        nurses_station                        ║
+        ║  charging              HALLWAY / RECEPTION        ║
+  y=0   ╚═══════════════════════════════════════════════════╝
+        x=-.5  x=2   x=4   x=6   x=8  x=10       x=12.5
+
+  Robot navigates via a pre-defined waypoint graph:
+    hallway ─► ward_a_aisle ─► bed_1/2/3
+    hallway ─► ward_b_aisle ─► bed_4/5/6
+  (No LIDAR — motion is dead-reckoning along verified straight segments.)
+-->
+<sdf version="1.6">
+  <world name="hospital_room">
+
+    <!-- ── Lighting ─────────────────────────────────────────────────── -->
+    <light name="sun" type="directional">
+      <cast_shadows>true</cast_shadows>
+      <pose>0 0 10 0 0 0</pose>
+      <diffuse>0.95 0.95 0.95 1</diffuse>
+      <specular>0.3 0.3 0.3 1</specular>
+      <direction>-0.5 0.1 -0.9</direction>
+    </light>
+
+    <light name="ambient_ward_a" type="point">
+      <pose>2.5 7.0 2.4 0 0 0</pose>
+      <diffuse>0.7 0.7 0.8 1</diffuse>
+      <specular>0.1 0.1 0.1 1</specular>
+      <attenuation><range>8</range><linear>0.1</linear></attenuation>
+    </light>
+
+    <light name="ambient_ward_b" type="point">
+      <pose>9.5 7.0 2.4 0 0 0</pose>
+      <diffuse>0.7 0.7 0.8 1</diffuse>
+      <specular>0.1 0.1 0.1 1</specular>
+      <attenuation><range>8</range><linear>0.1</linear></attenuation>
+    </light>
+
+    <scene>
+      <ambient>0.5 0.5 0.55 1</ambient>
+      <background>0.6 0.6 0.65 1</background>
+      <shadows>true</shadows>
+    </scene>
+
+    <physics name="default_physics" type="ode">
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1</real_time_factor>
+    </physics>
+
+    <!-- ── Ground plane ─────────────────────────────────────────────── -->
+    <model name="ground_plane">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry><plane><normal>0 0 1</normal><size>30 30</size></plane></geometry>
+          <surface><friction><ode><mu>1.0</mu><mu2>1.0</mu2></ode></friction></surface>
+        </collision>
+        <visual name="visual">
+          <geometry><plane><normal>0 0 1</normal><size>30 30</size></plane></geometry>
+          <material><ambient>0.82 0.82 0.82 1</ambient><diffuse>0.82 0.82 0.82 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ════════════════════════════════════════════════════════════════
+         OUTER PERIMETER WALLS
+         Building footprint: x -0.5→12.5  y -0.5→11.0
+         Wall thickness: 0.1 m  Height: 2.5 m
+    ════════════════════════════════════════════════════════════════════ -->
+
+    <model name="wall_south">
+      <static>true</static><pose>6.0 -0.5 1.25 0 0 0</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>13.2 0.1 2.5</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>13.2 0.1 2.5</size></box></geometry>
+          <material><ambient>0.88 0.88 0.88 1</ambient><diffuse>0.88 0.88 0.88 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <model name="wall_north">
+      <static>true</static><pose>6.0 11.0 1.25 0 0 0</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>13.2 0.1 2.5</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>13.2 0.1 2.5</size></box></geometry>
+          <material><ambient>0.88 0.88 0.88 1</ambient><diffuse>0.88 0.88 0.88 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <model name="wall_west">
+      <static>true</static><pose>-0.5 5.25 1.25 0 0 0</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>0.1 11.6 2.5</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>0.1 11.6 2.5</size></box></geometry>
+          <material><ambient>0.88 0.88 0.88 1</ambient><diffuse>0.88 0.88 0.88 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <model name="wall_east">
+      <static>true</static><pose>12.5 5.25 1.25 0 0 0</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>0.1 11.6 2.5</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>0.1 11.6 2.5</size></box></geometry>
+          <material><ambient>0.88 0.88 0.88 1</ambient><diffuse>0.88 0.88 0.88 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <!-- ════════════════════════════════════════════════════════════════
+         HALLWAY / WARD DIVIDER WALL  (y = 3.5)
+         Two door openings:
+           Door A — x: 2.0 → 4.0  (centre x=3.0, width 2 m)
+           Door B — x: 8.0 → 10.0 (centre x=9.0, width 2 m)
+    ════════════════════════════════════════════════════════════════════ -->
+
+    <!-- west segment: x -0.5 → 2.0 -->
+    <model name="divider_west">
+      <static>true</static><pose>0.75 3.5 1.25 0 0 0</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>2.5 0.1 2.5</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>2.5 0.1 2.5</size></box></geometry>
+          <material><ambient>0.85 0.85 0.85 1</ambient><diffuse>0.85 0.85 0.85 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <!-- middle segment: x 4.0 → 8.0 -->
+    <model name="divider_mid">
+      <static>true</static><pose>6.0 3.5 1.25 0 0 0</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>4.0 0.1 2.5</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>4.0 0.1 2.5</size></box></geometry>
+          <material><ambient>0.85 0.85 0.85 1</ambient><diffuse>0.85 0.85 0.85 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <!-- east segment: x 10.0 → 12.5 -->
+    <model name="divider_east">
+      <static>true</static><pose>11.25 3.5 1.25 0 0 0</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>2.5 0.1 2.5</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>2.5 0.1 2.5</size></box></geometry>
+          <material><ambient>0.85 0.85 0.85 1</ambient><diffuse>0.85 0.85 0.85 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <!-- ════════════════════════════════════════════════════════════════
+         CENTRE DIVIDER WALL  (x = 6.0, y: 3.5 → 11.0)
+         Separates Ward A (west) from Ward B (east).
+         Robot must go through hallway to cross between wards.
+    ════════════════════════════════════════════════════════════════════ -->
+
+    <model name="wall_centre">
+      <static>true</static><pose>6.0 7.25 1.25 0 0 0</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>0.1 7.5 2.5</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>0.1 7.5 2.5</size></box></geometry>
+          <material><ambient>0.85 0.85 0.85 1</ambient><diffuse>0.85 0.85 0.85 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <!-- ════════════════════════════════════════════════════════════════
+         DOOR FRAMES (visual markers at openings)
+    ════════════════════════════════════════════════════════════════════ -->
+
+    <!-- Door A left post x=2.0 -->
+    <model name="door_a_left"><static>true</static><pose>2.0 3.5 1.25 0 0 0</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>0.08 0.08 2.5</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>0.08 0.08 2.5</size></box></geometry>
+          <material><ambient>0.5 0.35 0.15 1</ambient><diffuse>0.5 0.35 0.15 1</diffuse></material></visual>
+      </link>
+    </model>
+    <!-- Door A right post x=4.0 -->
+    <model name="door_a_right"><static>true</static><pose>4.0 3.5 1.25 0 0 0</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>0.08 0.08 2.5</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>0.08 0.08 2.5</size></box></geometry>
+          <material><ambient>0.5 0.35 0.15 1</ambient><diffuse>0.5 0.35 0.15 1</diffuse></material></visual>
+      </link>
+    </model>
+    <!-- Door A lintel -->
+    <model name="door_a_top"><static>true</static><pose>3.0 3.5 2.3 0 0 0</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>2.08 0.08 0.2</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>2.08 0.08 0.2</size></box></geometry>
+          <material><ambient>0.5 0.35 0.15 1</ambient><diffuse>0.5 0.35 0.15 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <!-- Door B left post x=8.0 -->
+    <model name="door_b_left"><static>true</static><pose>8.0 3.5 1.25 0 0 0</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>0.08 0.08 2.5</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>0.08 0.08 2.5</size></box></geometry>
+          <material><ambient>0.5 0.35 0.15 1</ambient><diffuse>0.5 0.35 0.15 1</diffuse></material></visual>
+      </link>
+    </model>
+    <!-- Door B right post x=10.0 -->
+    <model name="door_b_right"><static>true</static><pose>10.0 3.5 1.25 0 0 0</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>0.08 0.08 2.5</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>0.08 0.08 2.5</size></box></geometry>
+          <material><ambient>0.5 0.35 0.15 1</ambient><diffuse>0.5 0.35 0.15 1</diffuse></material></visual>
+      </link>
+    </model>
+    <!-- Door B lintel -->
+    <model name="door_b_top"><static>true</static><pose>9.0 3.5 2.3 0 0 0</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>2.08 0.08 0.2</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>2.08 0.08 0.2</size></box></geometry>
+          <material><ambient>0.5 0.35 0.15 1</ambient><diffuse>0.5 0.35 0.15 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <!-- ════════════════════════════════════════════════════════════════
+         WARD A BEDS  (x≈4.5, robot aisle at x≈2.0)
+         Bed size: 1.0 × 2.0 × 0.6 m
+         Robot parks on west side (x=2.0) beside each bed.
+    ════════════════════════════════════════════════════════════════════ -->
+
+    <model name="bed_1_frame"><static>true</static><pose>4.5 5.0 0.3 0 0 0</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>1.0 2.0 0.6</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>1.0 2.0 0.6</size></box></geometry>
+          <material><ambient>0.75 0.75 0.9 1</ambient><diffuse>0.75 0.75 0.9 1</diffuse></material></visual>
+      </link>
+    </model>
+    <!-- Mattress on bed 1 -->
+    <model name="bed_1_mattress"><static>true</static><pose>4.5 5.0 0.65 0 0 0</pose>
+      <link name="link">
+        <visual name="v"><geometry><box><size>0.9 1.9 0.1</size></box></geometry>
+          <material><ambient>0.95 0.95 0.95 1</ambient><diffuse>0.95 0.95 0.95 1</diffuse></material></visual>
+      </link>
+    </model>
+    <!-- Side table bed 1 -->
+    <model name="table_1"><static>true</static><pose>5.3 4.2 0.35 0 0 0</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>0.4 0.4 0.7</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>0.4 0.4 0.7</size></box></geometry>
+          <material><ambient>0.6 0.5 0.3 1</ambient><diffuse>0.6 0.5 0.3 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <model name="bed_2_frame"><static>true</static><pose>4.5 7.5 0.3 0 0 0</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>1.0 2.0 0.6</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>1.0 2.0 0.6</size></box></geometry>
+          <material><ambient>0.75 0.75 0.9 1</ambient><diffuse>0.75 0.75 0.9 1</diffuse></material></visual>
+      </link>
+    </model>
+    <model name="bed_2_mattress"><static>true</static><pose>4.5 7.5 0.65 0 0 0</pose>
+      <link name="link">
+        <visual name="v"><geometry><box><size>0.9 1.9 0.1</size></box></geometry>
+          <material><ambient>0.95 0.95 0.95 1</ambient><diffuse>0.95 0.95 0.95 1</diffuse></material></visual>
+      </link>
+    </model>
+    <model name="table_2"><static>true</static><pose>5.3 6.7 0.35 0 0 0</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>0.4 0.4 0.7</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>0.4 0.4 0.7</size></box></geometry>
+          <material><ambient>0.6 0.5 0.3 1</ambient><diffuse>0.6 0.5 0.3 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <model name="bed_3_frame"><static>true</static><pose>4.5 9.5 0.3 0 0 0</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>1.0 2.0 0.6</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>1.0 2.0 0.6</size></box></geometry>
+          <material><ambient>0.75 0.75 0.9 1</ambient><diffuse>0.75 0.75 0.9 1</diffuse></material></visual>
+      </link>
+    </model>
+    <model name="bed_3_mattress"><static>true</static><pose>4.5 9.5 0.65 0 0 0</pose>
+      <link name="link">
+        <visual name="v"><geometry><box><size>0.9 1.9 0.1</size></box></geometry>
+          <material><ambient>0.95 0.95 0.95 1</ambient><diffuse>0.95 0.95 0.95 1</diffuse></material></visual>
+      </link>
+    </model>
+    <model name="table_3"><static>true</static><pose>5.3 8.7 0.35 0 0 0</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>0.4 0.4 0.7</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>0.4 0.4 0.7</size></box></geometry>
+          <material><ambient>0.6 0.5 0.3 1</ambient><diffuse>0.6 0.5 0.3 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <!-- ════════════════════════════════════════════════════════════════
+         WARD B BEDS  (x≈11.0, robot aisle at x≈8.5)
+    ════════════════════════════════════════════════════════════════════ -->
+
+    <model name="bed_4_frame"><static>true</static><pose>11.0 5.0 0.3 0 0 0</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>1.0 2.0 0.6</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>1.0 2.0 0.6</size></box></geometry>
+          <material><ambient>0.75 0.9 0.75 1</ambient><diffuse>0.75 0.9 0.75 1</diffuse></material></visual>
+      </link>
+    </model>
+    <model name="bed_4_mattress"><static>true</static><pose>11.0 5.0 0.65 0 0 0</pose>
+      <link name="link">
+        <visual name="v"><geometry><box><size>0.9 1.9 0.1</size></box></geometry>
+          <material><ambient>0.95 0.95 0.95 1</ambient><diffuse>0.95 0.95 0.95 1</diffuse></material></visual>
+      </link>
+    </model>
+    <model name="table_4"><static>true</static><pose>11.8 4.2 0.35 0 0 0</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>0.4 0.4 0.7</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>0.4 0.4 0.7</size></box></geometry>
+          <material><ambient>0.6 0.5 0.3 1</ambient><diffuse>0.6 0.5 0.3 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <model name="bed_5_frame"><static>true</static><pose>11.0 7.5 0.3 0 0 0</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>1.0 2.0 0.6</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>1.0 2.0 0.6</size></box></geometry>
+          <material><ambient>0.75 0.9 0.75 1</ambient><diffuse>0.75 0.9 0.75 1</diffuse></material></visual>
+      </link>
+    </model>
+    <model name="bed_5_mattress"><static>true</static><pose>11.0 7.5 0.65 0 0 0</pose>
+      <link name="link">
+        <visual name="v"><geometry><box><size>0.9 1.9 0.1</size></box></geometry>
+          <material><ambient>0.95 0.95 0.95 1</ambient><diffuse>0.95 0.95 0.95 1</diffuse></material></visual>
+      </link>
+    </model>
+    <model name="table_5"><static>true</static><pose>11.8 6.7 0.35 0 0 0</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>0.4 0.4 0.7</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>0.4 0.4 0.7</size></box></geometry>
+          <material><ambient>0.6 0.5 0.3 1</ambient><diffuse>0.6 0.5 0.3 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <model name="bed_6_frame"><static>true</static><pose>11.0 9.5 0.3 0 0 0</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>1.0 2.0 0.6</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>1.0 2.0 0.6</size></box></geometry>
+          <material><ambient>0.75 0.9 0.75 1</ambient><diffuse>0.75 0.9 0.75 1</diffuse></material></visual>
+      </link>
+    </model>
+    <model name="bed_6_mattress"><static>true</static><pose>11.0 9.5 0.65 0 0 0</pose>
+      <link name="link">
+        <visual name="v"><geometry><box><size>0.9 1.9 0.1</size></box></geometry>
+          <material><ambient>0.95 0.95 0.95 1</ambient><diffuse>0.95 0.95 0.95 1</diffuse></material></visual>
+      </link>
+    </model>
+    <model name="table_6"><static>true</static><pose>11.8 8.7 0.35 0 0 0</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>0.4 0.4 0.7</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>0.4 0.4 0.7</size></box></geometry>
+          <material><ambient>0.6 0.5 0.3 1</ambient><diffuse>0.6 0.5 0.3 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <!-- ════════════════════════════════════════════════════════════════
+         HALLWAY FURNITURE
+    ════════════════════════════════════════════════════════════════════ -->
+
+    <!-- Nurses station desk — near east end of hallway -->
+    <model name="nurses_desk"><static>true</static><pose>11.0 2.0 0.45 0 0 0</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>1.2 0.8 0.9</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>1.2 0.8 0.9</size></box></geometry>
+          <material><ambient>0.55 0.40 0.20 1</ambient><diffuse>0.55 0.40 0.20 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <!-- Computer monitor on desk -->
+    <model name="nurses_monitor"><static>true</static><pose>11.0 1.75 1.05 0 0 0</pose>
+      <link name="link">
+        <visual name="v"><geometry><box><size>0.4 0.05 0.3</size></box></geometry>
+          <material><ambient>0.1 0.1 0.1 1</ambient><diffuse>0.1 0.1 0.1 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <!-- Charging dock — bright green floor marker near home -->
+    <model name="charging_dock"><static>true</static><pose>0.5 0.5 0.01 0 0 0</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>0.4 0.4 0.02</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>0.4 0.4 0.02</size></box></geometry>
+          <material><ambient>0.05 0.85 0.05 1</ambient><diffuse>0.05 0.85 0.05 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <!-- Supply cabinet near west wall of Ward A -->
+    <model name="supply_cabinet"><static>true</static><pose>0.4 6.5 0.9 0 0 0</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>0.5 0.8 1.8</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>0.5 0.8 1.8</size></box></geometry>
+          <material><ambient>0.85 0.85 0.85 1</ambient><diffuse>0.85 0.85 0.85 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <!-- Pharmacy cabinet Ward B west wall -->
+    <model name="pharmacy_cabinet"><static>true</static><pose>6.8 7.5 0.9 0 0 0</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>0.5 1.2 1.8</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>0.5 1.2 1.8</size></box></geometry>
+          <material><ambient>0.7 0.85 0.85 1</ambient><diffuse>0.7 0.85 0.85 1</diffuse></material></visual>
+      </link>
+    </model>
+
+  </world>
+</sdf>

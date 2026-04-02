@@ -249,7 +249,8 @@ class MockGPIO:
         with self._lock:
             self._left_norm  = left_norm  * (-1 if self._left_inv  else 1)
             self._right_norm = right_norm * (-1 if self._right_inv else 1)
-        print(f'[MockGPIO] left={left_norm:+.2f}  right={right_norm:+.2f}')
+        if left_norm != 0.0 or right_norm != 0.0:
+            print(f'[MockGPIO] left={left_norm:+.2f}  right={right_norm:+.2f}')
 
     def read_and_reset_ticks(self) -> Tuple[int, int]:
         with self._lock:

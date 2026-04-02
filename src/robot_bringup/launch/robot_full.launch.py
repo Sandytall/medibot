@@ -11,14 +11,17 @@ map_file     : path to the map YAML used by nav2 / AMCL
 
 import os
 
+from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import (
     DeclareLaunchArgument,
     GroupAction,
+    IncludeLaunchDescription,
     LogInfo,
     SetEnvironmentVariable,
 )
 from launch.conditions import IfCondition, UnlessCondition
+from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import (
     EnvironmentVariable,
     LaunchConfiguration,
@@ -39,7 +42,7 @@ def generate_launch_description():
 
     arg_use_mock_hw = DeclareLaunchArgument(
         'use_mock_hw',
-        default_value='false',
+        default_value=EnvironmentVariable('USE_MOCK_HW', default_value='false'),
         description='Set to true to use mock hardware (no physical sensors needed)')
 
     arg_map_file = DeclareLaunchArgument(
@@ -53,46 +56,60 @@ def generate_launch_description():
         value=LaunchConfiguration('use_mock_hw'))
 
     # ------------------------------------------------------------------
+    # Simulation: include gazebo.launch.py when use_sim:=true
+    # ------------------------------------------------------------------
+    pkg_share = get_package_share_directory('robot_bringup')
+    sim_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(pkg_share, 'launch', 'gazebo.launch.py')
+        ),
+        condition=IfCondition(LaunchConfiguration('use_sim')),
+    )
+
+    # ------------------------------------------------------------------
     # Helper: build a dict of common env overrides for every node
     # ------------------------------------------------------------------
     def _mock_env():
         return [{'USE_MOCK_HW': LaunchConfiguration('use_mock_hw')}]
 
     # ------------------------------------------------------------------
-    # Group 1 – Sensing: base sensors
+    # Group 1 – Sensing: base sensors  (hardware only — skip in sim)
     # ------------------------------------------------------------------
-    group_sensing = GroupAction([
-        Node(
-            package='motor_driver_node',
-            executable='motor_driver',
-            name='motor_driver',
-            output='screen',
-            additional_env={'USE_MOCK_HW': LaunchConfiguration('use_mock_hw')},
-        ),
-        Node(
-            package='imu_mpu6050',
-            executable='imu_node',
-            name='imu_node',
-            output='screen',
-            additional_env={'USE_MOCK_HW': LaunchConfiguration('use_mock_hw')},
-        ),
-        Node(
-            package='camera_node',
-            executable='main_camera',
-            name='main_camera',
-            output='screen',
-            parameters=[{'camera_id': 0}],
-            additional_env={'USE_MOCK_HW': LaunchConfiguration('use_mock_hw')},
-        ),
-        Node(
-            package='camera_node',
-            executable='face_camera',
-            name='face_camera',
-            output='screen',
-            parameters=[{'camera_id': 1}],
-            additional_env={'USE_MOCK_HW': LaunchConfiguration('use_mock_hw')},
-        ),
-    ])
+    group_sensing = GroupAction(
+        condition=UnlessCondition(LaunchConfiguration('use_sim')),
+        actions=[
+            Node(
+                package='motor_driver_node',
+                executable='motor_driver',
+                name='motor_driver',
+                output='screen',
+                additional_env={'USE_MOCK_HW': LaunchConfiguration('use_mock_hw')},
+            ),
+            Node(
+                package='imu_mpu6050',
+                executable='imu_node',
+                name='imu_node',
+                output='screen',
+                additional_env={'USE_MOCK_HW': LaunchConfiguration('use_mock_hw')},
+            ),
+            Node(
+                package='camera_node',
+                executable='main_camera',
+                name='main_camera',
+                output='screen',
+                parameters=[{'camera_id': 0}],
+                additional_env={'USE_MOCK_HW': LaunchConfiguration('use_mock_hw')},
+            ),
+            Node(
+                package='camera_node',
+                executable='face_camera',
+                name='face_camera',
+                output='screen',
+                parameters=[{'camera_id': 1}],
+                additional_env={'USE_MOCK_HW': LaunchConfiguration('use_mock_hw')},
+            ),
+        ]
+    )
 
     # ------------------------------------------------------------------
     # Group 2 – Vision: face detection and tracking
@@ -217,6 +234,7 @@ def generate_launch_description():
         arg_map_file,
         set_mock_hw_env,
         LogInfo(msg='--- MediBot Full Bringup ---'),
+        sim_launch,
         group_sensing,
         group_vision,
         group_control,

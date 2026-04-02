@@ -16,6 +16,10 @@
   <depend>doctor_dashboard</depend>
   <depend>compute_manager</depend>
   <depend>teleop_gamepad</depend>
+  <exec_depend>gazebo_ros</exec_depend>
+  <exec_depend>robot_state_publisher</exec_depend>
+  <exec_depend>rviz2</exec_depend>
+  <exec_depend>joint_state_publisher</exec_depend>
   <buildtool_depend>ament_python</buildtool_depend>
   <export><build_type>ament_python</build_type></export>
 </package>
