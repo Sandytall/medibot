@@ -34,3 +34,6 @@ Thumbs.db
 *.pth
 assets/faces/*.pkl
 .claude/
+
+# Worktrees
+.worktrees/
