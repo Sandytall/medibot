@@ -197,6 +197,64 @@ Selector (Main Mode Selection)
 - **MQTT Broker**: Running on Pi5 (default port 1883)
 - **Security**: Local network only, no internet dependency for core functions
 
+## File Organization for Pi4 vs Pi5
+
+### Pi4 (Hardware Controller) Files:
+```
+pi4_services/
+├── hardware/
+│   ├── motor_controller.py    # L298N motor control
+│   ├── servo_controller.py    # 8 servos via PCA9685
+│   ├── imu_reader.py          # MPU6050 IMU data
+│   ├── camera_streamer.py     # Pi HQ camera capture
+│   ├── audio_handler.py       # USB mic input + speaker output
+│   └── gpio_manager.py        # GPIO pin management
+├── mqtt/
+│   ├── mqtt_client.py         # Connect to Pi5 MQTT broker
+│   ├── sensor_publisher.py    # Publish sensor data to Pi5
+│   └── command_subscriber.py  # Receive commands from Pi5
+├── config/
+│   ├── pi4_config.yaml        # GPIO pins, I2C addresses, etc.
+│   └── network_config.yaml    # Pi5 IP address, MQTT settings
+└── setup_pi4.sh              # One-command Pi4 installation
+```
+
+### Pi5 (Processing Brain) Files:
+```
+pi5_services/
+├── ros2_ws/src/               # ROS2 workspace (existing + new packages)
+│   ├── mqtt_bridge/           # MQTT ↔ ROS2 translation
+│   ├── voice_assistant/       # "Hey Mars" processing
+│   ├── face_registration/     # 150-photo patient registration  
+│   ├── qr_navigation/         # QR code boundary detection
+│   ├── behavior_tree_robot/   # Enhanced behavior tree
+│   └── enhanced_ai_brain/     # Voice modes + Google Dialogflow
+├── touchscreen/
+│   ├── xpt2046_driver/        # Touchscreen driver installation
+│   ├── display_manager.py     # Screen mode switching  
+│   └── ui_interfaces/         # Medicine info, patient faces
+├── databases/
+│   ├── patient_manager.py     # Enhanced patient database
+│   └── face_encodings/        # Face recognition storage
+├── tmux_management/
+│   ├── medibot_session.conf   # Tmux session configuration
+│   ├── start_medibot.sh       # Launch full tmux session
+│   ├── window_layouts/        # Individual window setup scripts
+│   │   ├── core_ros2.sh       # Window 0: ROS2 services
+│   │   ├── ai_voice.sh        # Window 1: AI and voice
+│   │   ├── mqtt_bridge.sh     # Window 2: MQTT communication  
+│   │   ├── database_api.sh    # Window 3: Database and API
+│   │   ├── hardware_status.sh # Window 4: Hardware monitoring
+│   │   ├── touchscreen.sh     # Window 5: Touchscreen interface
+│   │   ├── navigation_qr.sh   # Window 6: Navigation and QR
+│   │   └── logs_debug.sh      # Window 7: Logs and debugging
+│   └── stop_medibot.sh        # Clean shutdown of all services
+├── config/
+│   ├── pi5_config.yaml        # ROS2, AI services, database paths
+│   └── voice_config.yaml      # Google Dialogflow credentials
+└── setup_pi5.sh              # One-command Pi5 installation
+```
+
 ### Easy Hardware Setup
 
 **Direct Pi4/Pi5 Deployment:**
@@ -218,12 +276,24 @@ Selector (Main Mode Selection)
 - **Pi5**: Test touchscreen, ROS2 nodes, MQTT broker, database connectivity
 - **Bridge**: Test Pi4↔Pi5 communication, latency measurement, data integrity
 
+**Pi5 Tmux Session Management:**
+- **Automated tmux setup**: 8 windows, each with 4 panes for organized service management
+- **Window Layout**:
+  - **Window 0: Core ROS2** (4 panes: Navigation, Behavior Tree, TF, RViz)
+  - **Window 1: AI & Voice** (4 panes: Voice Assistant, Face Recognition, Google Dialogflow, TTS)
+  - **Window 2: MQTT & Bridge** (4 panes: MQTT Broker, Bridge Node, Connection Monitor, Message Log)
+  - **Window 3: Database & API** (4 panes: Patient DB, Face Encodings, FastAPI Dashboard, SQLite Monitor)
+  - **Window 4: Hardware Status** (4 panes: Pi4 Connection, Sensor Data, Motor Status, System Health)
+  - **Window 5: Touchscreen** (4 panes: XPT2046 Driver, Display Manager, UI Interface, Touch Events)
+  - **Window 6: Navigation & QR** (4 panes: QR Detection, Boundary Check, PID Control, Mapping)
+  - **Window 7: Logs & Debug** (4 panes: ROS2 Logs, System Logs, Error Monitor, Performance Stats)
+
 **Setup Workflow:**
 1. **Flash OS Images**: Pi OS on Pi4, Ubuntu 22.04 on Pi5
 2. **Run Setup Scripts**: `./setup_pi4.sh` and `./setup_pi5.sh`
 3. **Configure Network**: `./setup_network.sh` for Ethernet bridge
 4. **Hardware Test**: Diagnostic scripts verify all components working
-5. **System Start**: One command launches entire system
+5. **System Start**: `./start_medibot.sh` launches full tmux session with all services
 
 ### Integration Points
 - **Existing Code Reuse**: Enhance current ai_brain, medicine_scheduler, doctor_dashboard packages
