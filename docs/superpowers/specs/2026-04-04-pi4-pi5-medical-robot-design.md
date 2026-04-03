@@ -197,30 +197,33 @@ Selector (Main Mode Selection)
 - **MQTT Broker**: Running on Pi5 (default port 1883)
 - **Security**: Local network only, no internet dependency for core functions
 
-### Development & Testing Setup
+### Easy Hardware Setup
 
-**Multi-Environment Support:**
-- **Production**: Pi4 (hardware) + Pi5 (processing) via Ethernet
-- **Development**: Single laptop running both Pi4 and Pi5 simulation
-- **Hybrid Testing**: Pi5 on laptop + Pi4 on actual hardware
+**Direct Pi4/Pi5 Deployment:**
+- **Pi4 Setup**: Automated installation of hardware control services
+- **Pi5 Setup**: Automated installation of ROS2 brain system + touchscreen drivers
 
-**Mock Hardware Implementation:**
-- **Mock Pi4 Services**: Simulated sensors, camera feeds, motor responses
-- **Docker Containers**: Separate containers for Pi4 and Pi5 services  
-- **Environment Variables**: `USE_MOCK_HW=true` for hardware simulation
-- **Configuration Switches**: Easy toggle between real/simulated hardware
+**One-Command Setup Scripts:**
+- **Pi4**: `./setup_pi4.sh` - Install hardware control stack, MQTT client, sensor drivers
+- **Pi5**: `./setup_pi5.sh` - Install ROS2 Humble, AI services, touchscreen drivers, MQTT broker
+- **Network**: `./setup_network.sh` - Configure Ethernet bridge between Pi4 and Pi5
 
-**Easy Setup Scripts:**
-- **One-command install**: `./setup_dev.sh laptop` or `./setup_dev.sh pi4` or `./setup_dev.sh pi5`
-- **Dependency management**: Automated install of all required packages
-- **Service configuration**: Auto-setup of MQTT broker, ROS2 workspace, databases
-- **Testing utilities**: Built-in hardware diagnostics and connection tests
+**Automated Dependencies:**
+- **Pi4**: Python packages, GPIO libraries, camera/audio drivers, MQTT client
+- **Pi5**: ROS2 workspace, face recognition, Google Dialogflow, XPT2046 drivers, SQLite
+- **Both**: Network configuration, systemd services, auto-start configuration
 
-**Development Workflow:**
-1. **Laptop Development**: Test full system with mock hardware
-2. **Pi5 Testing**: Deploy brain services to Pi5, keep Pi4 mocked
-3. **Hardware Integration**: Deploy Pi4 services to actual hardware  
-4. **Production Deployment**: Full Pi4 + Pi5 hardware setup
+**Hardware Diagnostics:**
+- **Pi4**: Test motor control, servo movement, camera feed, mic/speaker, IMU readings  
+- **Pi5**: Test touchscreen, ROS2 nodes, MQTT broker, database connectivity
+- **Bridge**: Test Pi4↔Pi5 communication, latency measurement, data integrity
+
+**Setup Workflow:**
+1. **Flash OS Images**: Pi OS on Pi4, Ubuntu 22.04 on Pi5
+2. **Run Setup Scripts**: `./setup_pi4.sh` and `./setup_pi5.sh`
+3. **Configure Network**: `./setup_network.sh` for Ethernet bridge
+4. **Hardware Test**: Diagnostic scripts verify all components working
+5. **System Start**: One command launches entire system
 
 ### Integration Points
 - **Existing Code Reuse**: Enhance current ai_brain, medicine_scheduler, doctor_dashboard packages
