@@ -197,6 +197,31 @@ Selector (Main Mode Selection)
 - **MQTT Broker**: Running on Pi5 (default port 1883)
 - **Security**: Local network only, no internet dependency for core functions
 
+### Development & Testing Setup
+
+**Multi-Environment Support:**
+- **Production**: Pi4 (hardware) + Pi5 (processing) via Ethernet
+- **Development**: Single laptop running both Pi4 and Pi5 simulation
+- **Hybrid Testing**: Pi5 on laptop + Pi4 on actual hardware
+
+**Mock Hardware Implementation:**
+- **Mock Pi4 Services**: Simulated sensors, camera feeds, motor responses
+- **Docker Containers**: Separate containers for Pi4 and Pi5 services  
+- **Environment Variables**: `USE_MOCK_HW=true` for hardware simulation
+- **Configuration Switches**: Easy toggle between real/simulated hardware
+
+**Easy Setup Scripts:**
+- **One-command install**: `./setup_dev.sh laptop` or `./setup_dev.sh pi4` or `./setup_dev.sh pi5`
+- **Dependency management**: Automated install of all required packages
+- **Service configuration**: Auto-setup of MQTT broker, ROS2 workspace, databases
+- **Testing utilities**: Built-in hardware diagnostics and connection tests
+
+**Development Workflow:**
+1. **Laptop Development**: Test full system with mock hardware
+2. **Pi5 Testing**: Deploy brain services to Pi5, keep Pi4 mocked
+3. **Hardware Integration**: Deploy Pi4 services to actual hardware  
+4. **Production Deployment**: Full Pi4 + Pi5 hardware setup
+
 ### Integration Points
 - **Existing Code Reuse**: Enhance current ai_brain, medicine_scheduler, doctor_dashboard packages
 - **MQTT-ROS2 Bridge**: Custom bridge node to translate between protocols
