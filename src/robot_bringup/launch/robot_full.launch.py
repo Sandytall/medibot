@@ -226,6 +226,16 @@ def generate_launch_description():
     ])
 
     # ------------------------------------------------------------------
+    # Group 8 – MQTT Bridge: Pi4 ↔ Pi5 communication
+    # ------------------------------------------------------------------
+    pkg_mqtt = get_package_share_directory('mqtt_bridge')
+    mqtt_bridge_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(pkg_mqtt, 'launch', 'mqtt_bridge.launch.py')
+        ),
+    )
+
+    # ------------------------------------------------------------------
     # Assemble LaunchDescription
     # ------------------------------------------------------------------
     return LaunchDescription([
@@ -235,6 +245,7 @@ def generate_launch_description():
         set_mock_hw_env,
         LogInfo(msg='--- MediBot Full Bringup ---'),
         sim_launch,
+        mqtt_bridge_launch,
         group_sensing,
         group_vision,
         group_control,
